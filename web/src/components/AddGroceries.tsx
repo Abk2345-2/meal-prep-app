@@ -27,13 +27,17 @@ export function AddGroceries({ onSaved }: { onSaved: () => void }) {
   // can edit it before saving. Without this the input goes blank on stop.
   useEffect(() => {
     if (!listening && transcript) {
-      setText(transcript);
+      // Append transcript to existing text with a comma separator if there's already content
+      setText((prev) => {
+        const newText = prev ? `${prev}, ${transcript}` : transcript;
+        return newText;
+      });
       reset();
     }
   }, [listening, transcript, reset]);
 
-  // While actively listening, show the live transcript; otherwise show text state.
-  const effectiveText = listening ? transcript : text;
+  // While actively listening, show the live transcript appended to existing text; otherwise show text state.
+  const effectiveText = listening && transcript ? (text ? `${text}, ${transcript}` : transcript) : text;
 
   // Live preview chips parsed client-side (backend re-parses on save).
   const preview = useMemo<ParsedItem[]>(
