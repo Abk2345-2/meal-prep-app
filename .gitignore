@@ -1,31 +1,127 @@
+```gitignore
 # Dependencies
 node_modules/
 
-# Build output and caches
-.next/
+# Build outputs
 dist/
 build/
-coverage/
-.turbo/
-.expo/
-.expo-shared/
+*.js
+*.ts
+*.tsx
 
-# Backend runtime files
-backend/.run/
-
-# Environment and local machine files
+# Environment variables
 .env
 .env.local
-.env.*.local
-.DS_Store
+*.env.*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # Logs
 *.log
+
+# Temp files
+*.tmp
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.nox/
+.pytest_cache/
+.mypy_cache/
+
+# Node
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
 
-# Editor/tool local state
-.vscode/
-.qodo/
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Rust
+target/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.war
+hs_err_pid*
+replay_pid*
+
+# C/C++
+*.o
+*.a
+*.so
+*.dll
+*.exe
+*.out
+*.obj
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.prof
+
+# Ruby
+*.gem
+*.rbc
+.bundle
+.config
+vendor/bundle
+tmp/
+
+# Compression
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
+```
