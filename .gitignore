@@ -1,107 +1,38 @@
-```gitignore
+```
 # Dependencies
 node_modules/
 
-# Build outputs
-dist/
-build/
-*.js
-*.ts
-*.tsx
-
-# Environment variables
+# Environment
 .env
 .env.local
-*.env.*
+.env.*
 
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Logs
+# Logs and temp files
 *.log
-
-# Temp files
 *.tmp
 
-# Coverage
-coverage/
-htmlcov/
-.coverage
+# Editors
+.vscode/
+.idea/
 
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-env/
-venv/
-.venv/
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage
-.nox/
-.pytest_cache/
-.mypy_cache/
 
-# Node
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-desktop.ini
-
-# Rust
-target/
-
-# Java
-*.class
-*.jar
-*.war
-*.ear
-*.war
-hs_err_pid*
-replay_pid*
-
-# C/C++
+# Build artifacts
+dist/
+build/
 *.o
-*.a
+*.obj
 *.so
+*.a
 *.dll
 *.exe
 *.out
-*.obj
 
-# Go
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-*.test
-*.prof
-
-# Ruby
-*.gem
-*.rbc
-.bundle
-.config
-vendor/bundle
-tmp/
-
-# Compression
+# Compressed files
 *.zip
 *.gz
 *.tar
@@ -124,4 +55,19 @@ tmp/
 *.tar.bz2
 *.tar.xz
 *.tar.zst
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Cache
+.mypy_cache/
+.pytest_cache/
+.gradle/
+target/
+
+# System
+.DS_Store
+Thumbs.db
 ```

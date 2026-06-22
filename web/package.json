@@ -12,7 +12,8 @@
     "@pantrytoplate/shared": "*",
     "next": "15.5.19",
     "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "react-dom": "19.0.0",
+    "groq-sdk": "^0.24.0"
   },
   "devDependencies": {
     "@types/node": "22.10.2",
