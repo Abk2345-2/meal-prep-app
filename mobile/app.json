@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "PantryToPlate",
+    "slug": "pantrytoplate",
+    "scheme": "pantrytoplate",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pantrytoplate.app"
+    },
+    "android": {
+      "package": "com.pantrytoplate.app"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-asset",
+      "expo-font"
+    ],
+    "extra": {
+      "apiBaseUrl": "http://localhost:8080"
+    }
+  }
+}

@@ -1,0 +1,70 @@
+# PantryToPlate local stack: Postgres + 4 microservices + gateway.
+# Frontends (web/mobile) run on the host via npm for fast hot-reload.
+#
+#   docker compose up postgres        # just the DB
+#   docker compose up                 # full backend
+name: pantrytoplate
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pantry
+      POSTGRES_PASSWORD: pantry
+      POSTGRES_DB: pantrytoplate
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pantry -d pantrytoplate"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  pantry:
+    build: { context: ./backend, args: { SERVICE: pantry } }
+    environment:
+      DATABASE_URL: postgres://pantry:pantry@postgres:5432/pantrytoplate?sslmode=disable
+      PANTRY_ADDR: ":8081"
+    depends_on: { postgres: { condition: service_healthy } }
+    ports: ["8081:8081"]
+
+  recipe:
+    build: { context: ./backend, args: { SERVICE: recipe } }
+    environment:
+      RECIPE_ADDR: ":8082"
+      RECIPE_PROVIDER: themealdb
+      MEALDB_BASE_URL: https://www.themealdb.com/api/json/v1/1
+    ports: ["8082:8082"]
+
+  nutrition:
+    build: { context: ./backend, args: { SERVICE: nutrition } }
+    environment:
+      DATABASE_URL: postgres://pantry:pantry@postgres:5432/pantrytoplate?sslmode=disable
+      NUTRITION_ADDR: ":8083"
+    depends_on: { postgres: { condition: service_healthy } }
+    ports: ["8083:8083"]
+
+  gamification:
+    build: { context: ./backend, args: { SERVICE: gamification } }
+    environment:
+      DATABASE_URL: postgres://pantry:pantry@postgres:5432/pantrytoplate?sslmode=disable
+      GAMIFICATION_ADDR: ":8084"
+    depends_on: { postgres: { condition: service_healthy } }
+    ports: ["8084:8084"]
+
+  gateway:
+    build: { context: ./backend, args: { SERVICE: gateway } }
+    environment:
+      GATEWAY_ADDR: ":8080"
+      PANTRY_URL: http://pantry:8081
+      RECIPE_URL: http://recipe:8082
+      NUTRITION_URL: http://nutrition:8083
+      GAMIFICATION_URL: http://gamification:8084
+      CORS_ALLOWED_ORIGINS: "*"
+    depends_on: [pantry, recipe, nutrition, gamification]
+    ports: ["8080:8080"]
+
+volumes:
+  pgdata:
