@@ -1,6 +1,7 @@
 package pantry
 
 import (
+	"encoding/base64"
 	"net/http"
 	"strconv"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pantrytoplate/backend/internal/httpx"
 	"github.com/pantrytoplate/backend/internal/middleware"
+	"github.com/pantrytoplate/backend/internal/speech"
 )
 
 // Handler exposes pantry HTTP endpoints.
@@ -27,6 +29,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/items", h.create)
 	r.Patch("/items/{id}", h.update)
 	r.Delete("/items/{id}", h.delete)
+	r.Post("/transcribe", h.transcribe)
 }
 
 type parseRequest struct {
@@ -131,4 +134,59 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.JSON(w, http.StatusNoContent, nil)
+}
+
+type transcribeRequest struct {
+	AudioBase64 string `json:"audioBase64"`
+	Filename    string `json:"filename"`
+}
+
+type transcribeResponse struct {
+	Text string `json:"text"`
+}
+
+// decodeBase64 decodes a base64 string to bytes
+func decodeBase64(data string) ([]byte, error) {
+	return base64.StdEncoding.DecodeString(data)
+}
+
+// transcribe converts audio to text using Groq's Whisper API
+func (h *Handler) transcribe(w http.ResponseWriter, r *http.Request) {
+	var req transcribeRequest
+	if !httpx.Decode(w, r, &req) {
+		return
+	}
+
+	if req.AudioBase64 == "" {
+		httpx.Error(w, http.StatusBadRequest, "audioBase64 is required")
+		return
+	}
+
+	// Decode base64 audio data
+	audioData, err := decodeBase64(req.AudioBase64)
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, "invalid audio data: "+err.Error())
+		return
+	}
+
+	filename := req.Filename
+	if filename == "" {
+		filename = "audio.webm"
+	}
+
+	// Get Groq API key from environment
+	apiKey := speech.GetAPIKeyFromEnv()
+	if apiKey == "" {
+		httpx.Error(w, http.StatusInternalServerError, "Groq API key not configured. Set GROQ_API_KEY environment variable.")
+		return
+	}
+
+	client := speech.NewGroqClient(apiKey)
+	text, err := client.TranscribeAudio(audioData, filename)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "transcription failed: "+err.Error())
+		return
+	}
+
+	httpx.JSON(w, http.StatusOK, transcribeResponse{Text: text})
 }
