@@ -10,7 +10,7 @@ include $(ENV_FILE)
 export
 endif
 
-.PHONY: tidy build test vet check-go run-gateway run-pantry run-recipe run-nutrition run-gamification run-all stop db-up db-down
+.PHONY: tidy build test vet check-go run-server run-gateway run-pantry run-recipe run-nutrition run-gamification run-all stop db-up db-down
 
 tidy:
 	go mod tidy
@@ -29,6 +29,10 @@ check-go:
 		echo "Go is not installed or not on PATH. Install Go 1.22+ from https://go.dev/dl/ or run the backend with docker compose."; \
 		exit 1; \
 	}
+
+# Single-binary server (replaces the 5-service setup for local dev).
+run-server: check-go
+	go run ./cmd/server
 
 # Run individual services (each auto-migrates on boot).
 run-gateway: check-go

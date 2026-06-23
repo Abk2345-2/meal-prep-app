@@ -44,54 +44,96 @@ func (s *Service) Suggest(ctx context.Context, p SuggestParams) ([]Suggestion, e
 		p.Limit = 8
 	}
 
-	// 1. Gather candidates: search the provider per available ingredient and dedupe.
+	// 1. Gather candidates via multi-ingredient search.
+	found, err := s.provider.SearchByIngredients(ctx, p.Ingredients)
+	if err != nil {
+		return nil, err
+	}
 	seen := map[string]bool{}
-	candidates := make([]recipeprovider.Recipe, 0)
-	for _, ing := range p.Ingredients {
-		key := firstWord(ing)
-		if key == "" {
-			continue
-		}
-		found, err := s.provider.SearchByIngredient(ctx, key)
-		if err != nil {
-			continue // skip a failing ingredient rather than failing the whole request
-		}
-		for _, r := range found {
-			if !seen[r.ID] {
-				seen[r.ID] = true
-				candidates = append(candidates, r)
-			}
+	candidates := make([]recipeprovider.Recipe, 0, len(found))
+	for _, r := range found {
+		if !seen[r.ID] {
+			seen[r.ID] = true
+			candidates = append(candidates, r)
 		}
 	}
 
-	// 2. Hydrate + score each candidate.
+	// 2. Score candidates.
+	// For pre-scored providers (Spoonacular) this is free — no extra API call.
+	// For others, scoring requires the full ingredient list from GetByID, so
+	// we hydrate eagerly (MealDB has no per-call cost).
 	owned := toSet(p.Ingredients)
-	suggestions := make([]Suggestion, 0, len(candidates))
+
+	type scored struct {
+		stub recipeprovider.Recipe
+		sg   Suggestion
+	}
+	var ranked []scored
+
 	for _, c := range candidates {
-		full, err := s.provider.GetByID(ctx, c.ID)
-		if err != nil {
-			continue
-		}
-		if p.MaxTime > 0 && full.TimeMinutes > p.MaxTime {
-			continue
-		}
-		sg := score(full, owned)
-		if sg.MatchScore >= p.MinMatch {
-			suggestions = append(suggestions, sg)
+		if c.PreScored {
+			// Use the match data from the search response; skip GetByID for now.
+			if c.PreMatchScore < p.MinMatch {
+				continue
+			}
+			ranked = append(ranked, scored{
+				stub: c,
+				sg: Suggestion{
+					Recipe:              c,
+					MatchScore:          round2(c.PreMatchScore),
+					MatchingIngredients: c.PreMatching,
+					MissingIngredients:  c.PreMissing,
+				},
+			})
+		} else {
+			// Provider doesn't pre-score: hydrate now and score locally.
+			full, err := s.provider.GetByID(ctx, c.ID)
+			if err != nil {
+				continue
+			}
+			if p.MaxTime > 0 && full.TimeMinutes > p.MaxTime {
+				continue
+			}
+			sg := score(full, owned)
+			if sg.MatchScore < p.MinMatch {
+				continue
+			}
+			ranked = append(ranked, scored{stub: full, sg: sg})
 		}
 	}
 
-	// 3. Sort by best match, then quickest.
-	sort.Slice(suggestions, func(i, j int) bool {
-		if suggestions[i].MatchScore != suggestions[j].MatchScore {
-			return suggestions[i].MatchScore > suggestions[j].MatchScore
+	// 3. Sort by best match, then title (stable; time unknown until hydrated).
+	sort.Slice(ranked, func(i, j int) bool {
+		if ranked[i].sg.MatchScore != ranked[j].sg.MatchScore {
+			return ranked[i].sg.MatchScore > ranked[j].sg.MatchScore
 		}
-		return suggestions[i].TimeMinutes < suggestions[j].TimeMinutes
+		return ranked[i].sg.Title < ranked[j].sg.Title
 	})
 
-	if len(suggestions) > p.Limit {
-		suggestions = suggestions[:p.Limit]
+	if len(ranked) > p.Limit {
+		ranked = ranked[:p.Limit]
 	}
+
+	// 4. Hydrate only the final kept pre-scored results.
+	suggestions := make([]Suggestion, 0, len(ranked))
+	for _, r := range ranked {
+		if r.stub.PreScored {
+			full, err := s.provider.GetByID(ctx, r.stub.ID)
+			if err != nil {
+				// Keep the stub rather than dropping the result entirely.
+				full = r.stub
+			}
+			if p.MaxTime > 0 && full.TimeMinutes > p.MaxTime {
+				continue
+			}
+			sg := r.sg
+			sg.Recipe = full
+			suggestions = append(suggestions, sg)
+		} else {
+			suggestions = append(suggestions, r.sg)
+		}
+	}
+
 	return suggestions, nil
 }
 
@@ -147,14 +189,6 @@ func toSet(items []string) map[string]bool {
 		set[strings.ToLower(strings.TrimSpace(i))] = true
 	}
 	return set
-}
-
-func firstWord(s string) string {
-	fields := strings.Fields(strings.ToLower(s))
-	if len(fields) == 0 {
-		return ""
-	}
-	return fields[0]
 }
 
 func round2(f float64) float64 {

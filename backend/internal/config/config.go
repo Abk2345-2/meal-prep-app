@@ -17,6 +17,9 @@ type Config struct {
 	//   postgres://user:pass@localhost:5432/pantrytoplate?sslmode=disable
 	DatabaseURL string
 
+	// ServerAddr is the single-binary listen address (cmd/server).
+	ServerAddr string
+
 	// Per-service listen addresses (used by each cmd/* binary).
 	GatewayAddr      string
 	PantryAddr       string
@@ -31,8 +34,14 @@ type Config struct {
 	GamificationURL string
 
 	// Recipe provider selection + config. Provider is swappable via env.
-	RecipeProvider string // "themealdb" (default)
-	MealDBBaseURL  string
+	// Set RECIPE_PROVIDER=spoonacular and SPOONACULAR_API_KEY to switch.
+	RecipeProvider      string // "themealdb" (default) | "spoonacular"
+	MealDBBaseURL       string
+	SpoonacularAPIKey   string
+	SpoonacularBaseURL  string
+
+	// GroqAPIKey is used by the pantry transcription endpoint.
+	GroqAPIKey string
 
 	// CORS allow-list for the browser frontend.
 	CORSAllowedOrigins string
@@ -42,6 +51,8 @@ type Config struct {
 func Load() Config {
 	return Config{
 		DatabaseURL: env("DATABASE_URL", "postgres://pantry:pantry@localhost:5432/pantrytoplate?sslmode=disable"),
+
+		ServerAddr: env("SERVER_ADDR", ":8080"),
 
 		GatewayAddr:      env("GATEWAY_ADDR", ":8080"),
 		PantryAddr:       env("PANTRY_ADDR", ":8081"),
@@ -54,8 +65,12 @@ func Load() Config {
 		NutritionURL:    env("NUTRITION_URL", "http://localhost:8083"),
 		GamificationURL: env("GAMIFICATION_URL", "http://localhost:8084"),
 
-		RecipeProvider: env("RECIPE_PROVIDER", "themealdb"),
-		MealDBBaseURL:  env("MEALDB_BASE_URL", "https://www.themealdb.com/api/json/v1/1"),
+		RecipeProvider:     env("RECIPE_PROVIDER", "local"),
+		MealDBBaseURL:      env("MEALDB_BASE_URL", "https://www.themealdb.com/api/json/v1/1"),
+		SpoonacularAPIKey:  env("SPOONACULAR_API_KEY", ""),
+		SpoonacularBaseURL: env("SPOONACULAR_BASE_URL", "https://api.spoonacular.com"),
+
+		GroqAPIKey: env("GROQ_API_KEY", ""),
 
 		CORSAllowedOrigins: env("CORS_ALLOWED_ORIGINS", "*"),
 	}

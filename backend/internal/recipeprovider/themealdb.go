@@ -30,30 +30,50 @@ type mealDBResponse struct {
 	Meals []map[string]any `json:"meals"`
 }
 
-// SearchByIngredient uses /search.php?s=<ingredient> which is more reliable than
-// the /filter.php?i= endpoint (that endpoint has CDN issues on the free tier).
-// The search endpoint returns full meal objects so we map them immediately.
-func (t *TheMealDB) SearchByIngredient(ctx context.Context, ingredient string) ([]Recipe, error) {
-	u := fmt.Sprintf("%s/search.php?s=%s", t.baseURL, url(ingredient))
-	var resp mealDBResponse
-	if err := t.getJSON(ctx, u, &resp); err != nil {
-		return nil, err
+// SearchByIngredients queries /filter.php?i= once per ingredient (free tier
+// limitation — multi-ingredient filter is premium only) and deduplicates.
+func (t *TheMealDB) SearchByIngredients(ctx context.Context, ingredients []string) ([]Recipe, error) {
+	seen := map[string]bool{}
+	var out []Recipe
+	for _, ing := range ingredients {
+		key := firstWord(ing)
+		if key == "" {
+			continue
+		}
+		u := fmt.Sprintf("%s/filter.php?i=%s", t.baseURL, queryEscape(key))
+		var resp mealDBResponse
+		if err := t.getJSON(ctx, u, &resp); err != nil {
+			continue // skip failing ingredient rather than aborting
+		}
+		for _, m := range resp.Meals {
+			id := str(m["idMeal"])
+			if seen[id] {
+				continue
+			}
+			seen[id] = true
+			out = append(out, Recipe{
+				ID:    id,
+				Title: str(m["strMeal"]),
+				Image: str(m["strMealThumb"]),
+			})
+		}
 	}
-	// The API returns {"meals": null} when nothing is found.
-	recipes := make([]Recipe, 0, len(resp.Meals))
-	for _, m := range resp.Meals {
-		recipes = append(recipes, Recipe{
-			ID:    str(m["idMeal"]),
-			Title: str(m["strMeal"]),
-			Image: str(m["strMealThumb"]),
-		})
+	return out, nil
+}
+
+func firstWord(s string) string {
+	s = strings.TrimSpace(s)
+	for i, r := range s {
+		if r == ' ' || r == '\t' {
+			return strings.ToLower(s[:i])
+		}
 	}
-	return recipes, nil
+	return strings.ToLower(s)
 }
 
 // GetByID calls /lookup.php?i=<id> and maps the full meal record.
 func (t *TheMealDB) GetByID(ctx context.Context, id string) (Recipe, error) {
-	u := fmt.Sprintf("%s/lookup.php?i=%s", t.baseURL, url(id))
+	u := fmt.Sprintf("%s/lookup.php?i=%s", t.baseURL, queryEscape(id))
 	var resp mealDBResponse
 	if err := t.getJSON(ctx, u, &resp); err != nil {
 		return Recipe{}, err
@@ -107,18 +127,24 @@ func mapMeal(m map[string]any) Recipe {
 	return r
 }
 
-// estimateTime approximates cook time from instruction length + ingredient count,
-// since the free API omits it. Clamped to a 10–90 minute range.
+// estimateTime approximates cook time from paragraph count + ingredient count.
+// Counting every "." was far too aggressive — MealDB instructions are verbose.
+// Instead we count paragraph breaks (blank lines) as step boundaries, which
+// is much closer to actual step count.
 func estimateTime(r Recipe) int {
-	steps := strings.Count(r.Instructions, ".") + strings.Count(r.Instructions, "\n")
-	est := 10 + len(r.Ingredients)*2 + steps
+	// Each ingredient adds ~1.5 min (prep), each paragraph step adds ~4 min.
+	paragraphs := len(strings.Split(strings.TrimSpace(r.Instructions), "\n\n"))
+	// \r\n\r\n variant
+	if p2 := len(strings.Split(strings.TrimSpace(r.Instructions), "\r\n\r\n")); p2 > paragraphs {
+		paragraphs = p2
+	}
+	est := 5 + len(r.Ingredients) + paragraphs*4
 	if est < 10 {
 		est = 10
 	}
 	if est > 90 {
 		est = 90
 	}
-	// Round to the nearest 5 for a cleaner UI.
 	return (est / 5) * 5
 }
 
@@ -142,7 +168,6 @@ func str(v any) string {
 	return ""
 }
 
-// url is a tiny query escaper (avoids importing net/url just for QueryEscape).
-func url(s string) string {
+func queryEscape(s string) string {
 	return strings.ReplaceAll(strings.TrimSpace(s), " ", "%20")
 }
