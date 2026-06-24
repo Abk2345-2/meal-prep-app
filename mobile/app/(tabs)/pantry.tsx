@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { PantryItem } from '@pantrytoplate/shared';
 import { useAppData } from '../../lib/useAppData';
 import { api } from '../../lib/api';
+import { PantryScreenSkeleton } from '../../components/LoadingScreen';
 
 // ── types & constants ─────────────────────────────────────────────────────────
 
@@ -68,7 +69,7 @@ function tabHasItems(items: PantryItem[], tab: TabKey): boolean {
 // ── PantryScreen ──────────────────────────────────────────────────────────────
 
 export default function PantryScreen() {
-  const { items, refreshAll } = useAppData();
+  const { items, loading, refreshAll } = useAppData();
   const [activeTab, setActiveTab] = useState<TabKey>('all');
 
   const filteredItems = useMemo(
@@ -95,6 +96,8 @@ export default function PantryScreen() {
     },
     [refreshAll],
   );
+
+  if (loading) return <PantryScreenSkeleton />;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>

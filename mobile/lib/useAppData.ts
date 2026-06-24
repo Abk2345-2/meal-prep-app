@@ -26,6 +26,7 @@ export function useAppData() {
   const [nutrition, setNutrition] = useState<TodayNutrition | null>(null);
   const [game, setGame] = useState<GamificationSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const refreshStats = useCallback(async () => {
     try {
@@ -84,9 +85,16 @@ export function useAppData() {
   }, []);
 
   const refreshAll = useCallback(async () => {
-    const pantry = await refreshPantry();
-    await refreshRecipes(pantry, minTime, maxTime, selectedArea, selectedCategory);
-    await refreshStats();
+    setLoading(true);
+    try {
+      const pantry = await refreshPantry();
+      await Promise.all([
+        refreshRecipes(pantry, minTime, maxTime, selectedArea, selectedCategory),
+        refreshStats(),
+      ]);
+    } finally {
+      setLoading(false);
+    }
   }, [refreshPantry, refreshRecipes, refreshStats, minTime, maxTime, selectedArea, selectedCategory]);
 
   // selectFilters — called when the filter drawer is applied
@@ -122,6 +130,7 @@ export function useAppData() {
     nutrition,
     game,
     error,
+    loading,
     refreshAll,
     refreshPantry,
     refreshStats,

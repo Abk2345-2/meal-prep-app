@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAppData } from '../../lib/useAppData';
 import { api } from '../../lib/api';
+import { YouScreenSkeleton } from '../../components/LoadingScreen';
 
 const brand = '#16a34a';
 
@@ -21,7 +22,7 @@ type DayActivity = { date: string; points: number; actions: ActionDetail[] };
 type Reward = { id: string; title: string; description: string; points_needed: number; unlocked: boolean };
 
 export default function YouScreen() {
-  const { game, refreshStats } = useAppData();
+  const { game, loading, refreshStats } = useAppData();
   const router = useRouter();
   const [sharing, setSharing] = useState(false);
 
@@ -72,6 +73,8 @@ export default function YouScreen() {
   const activeDays = Math.min(streak, 7);
 
   const unlockedRewards = rewards.filter((r) => r.unlocked);
+
+  if (loading) return <YouScreenSkeleton />;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>

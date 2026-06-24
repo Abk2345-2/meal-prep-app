@@ -19,6 +19,7 @@ import { useAuth } from '../../lib/auth-context';
 import { api } from '../../lib/api';
 import { useGroqSpeech } from '../../lib/useGroqSpeech';
 import { formatGroceryTranscript } from '../../lib/groceryTranscript';
+import { CookScreenSkeleton } from '../../components/LoadingScreen';
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
@@ -61,6 +62,7 @@ export default function CookScreen() {
     recipesLoading,
     nutrition,
     game,
+    loading,
     refreshAll,
     refreshStats,
     selectFilters,
@@ -203,6 +205,8 @@ export default function CookScreen() {
   const areaLabel = CUISINE_OPTIONS.find((o) => o.value === selectedArea)?.label ?? '';
   const catLabel  = CATEGORY_OPTIONS.find((o) => o.value === selectedCategory)?.label ?? '';
   const filterSummary = [areaLabel, catLabel, timeLabel].filter(Boolean).join(' · ');
+
+  if (loading) return <CookScreenSkeleton />;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>

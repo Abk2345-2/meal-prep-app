@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppData } from '../../lib/useAppData';
 import { api } from '../../lib/api';
+import { TrackScreenSkeleton } from '../../components/LoadingScreen';
 
 const brand = '#16a34a';
 
@@ -18,7 +19,7 @@ type MealEntry = {
 type DayLog = { date: string; calories: number; meals: MealEntry[] };
 
 export default function TrackScreen() {
-  const { nutrition, refreshStats } = useAppData();
+  const { nutrition, loading, refreshStats } = useAppData();
 
   const [calories, setCalories] = useState('');
   const [source, setSource] = useState('');
@@ -82,6 +83,8 @@ export default function TrackScreen() {
     },
     [refreshStats, loadHistory],
   );
+
+  if (loading) return <TrackScreenSkeleton />;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
