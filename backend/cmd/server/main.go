@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
+	"github.com/pantrytoplate/backend/internal/auth"
 	"github.com/pantrytoplate/backend/internal/config"
 	"github.com/pantrytoplate/backend/internal/db"
 	"github.com/pantrytoplate/backend/internal/gamification"
@@ -63,10 +64,14 @@ func main() {
 		log.Fatalf("unknown RECIPE_PROVIDER: %s", cfg.RecipeProvider)
 	}
 
+	jwtSecret := []byte(cfg.JWTSecret)
+
 	pantryH := pantry.NewHandler(pantry.NewStore(pool))
 	recipeH := recipe.NewHandler(recipe.NewService(provider))
 	nutritionH := nutrition.NewHandler(nutrition.NewStore(pool))
 	gamificationH := gamification.NewHandler(gamification.NewStore(pool))
+	authH := auth.NewHandler(auth.NewStore(pool), jwtSecret,
+		cfg.GoogleClientID, cfg.GoogleClientSecret, cfg.GoogleCallbackURL, cfg.FrontendURL)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Recover, middleware.Logger)
@@ -80,9 +85,14 @@ func main() {
 
 	r.Get("/healthz", httpx.Health("server"))
 
-	// Inject the dev user on all /api/* routes.
+	// Auth routes don't require an existing session.
+	r.Route("/api/auth", func(r chi.Router) {
+		authH.Routes(r)
+	})
+
+	// All other /api/* routes resolve the caller's identity from a JWT or header.
 	r.Route("/api", func(r chi.Router) {
-		r.Use(middleware.UserContext)
+		r.Use(middleware.UserContext(jwtSecret))
 		r.Mount("/pantry", pantryRouter(pantryH))
 		r.Mount("/recipes", recipeRouter(recipeH))
 		r.Mount("/nutrition", nutritionRouter(nutritionH))

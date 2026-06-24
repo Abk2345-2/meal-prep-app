@@ -56,6 +56,12 @@ func (c *GroqClient) TranscribeAudio(audioData []byte, filename string) (string,
 		return "", fmt.Errorf("writing model field: %w", err)
 	}
 
+	// Force English — prevents Whisper from transcribing in the audio's original
+	// language when the user speaks non-English ingredient names.
+	if err := writer.WriteField("language", "en"); err != nil {
+		return "", fmt.Errorf("writing language field: %w", err)
+	}
+
 	// Add response_format field
 	if err := writer.WriteField("response_format", "json"); err != nil {
 		return "", fmt.Errorf("writing response_format field: %w", err)

@@ -11,14 +11,17 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// pointsForAction is the flat, simple point schedule from the product spec.
+// pointsForAction defines base points per action.
+// log_pantry is special — it only awards once per calendar day (see Award).
 var pointsForAction = map[string]int{
-	"log_pantry":  10,
-	"cook_meal":   15,
-	"hit_goal":    20,
-	"avoid_waste": 25,
-	"share":       10,
-	"refer":       50,
+	"log_pantry":        5,  // once/day habit check-in
+	"cook_meal":         20, // core action — cooking from pantry
+	"hit_goal":          30, // daily calorie goal reached
+	"avoid_waste":       50, // cooked expiring ingredient
+	"share":             15,
+	"refer":             50,
+	"streak_7":          50,  // 7-day streak milestone (one-time per achievement)
+	"streak_30":         200, // 30-day streak milestone
 }
 
 // Reward is a catalog entry.
@@ -43,21 +46,87 @@ type Store struct{ pool *pgxpool.Pool }
 func NewStore(pool *pgxpool.Pool) *Store { return &Store{pool: pool} }
 
 // Award records points for an action and bumps the streak. Returns points added.
+// Special rules:
+//   - log_pantry: only awards once per calendar day — subsequent adds that day earn 0.
+//   - streak milestones: checked after every award; bonus granted once per milestone.
 func (s *Store) Award(ctx context.Context, userID, action string) (int, error) {
 	pts, ok := pointsForAction[action]
 	if !ok {
-		pts = 5 // unknown action still earns a little
+		pts = 0 // unknown action earns nothing
 	}
-	_, err := s.pool.Exec(ctx, `
-		INSERT INTO gamification.points_ledger (id, user_id, action, points)
-		VALUES ($1,$2,$3,$4)`, uuid.NewString(), userID, action, pts)
+
+	// Enforce once-per-day for log_pantry
+	if action == "log_pantry" {
+		var count int
+		_ = s.pool.QueryRow(ctx,
+			`SELECT COUNT(*) FROM gamification.points_ledger
+			 WHERE user_id=$1 AND action='log_pantry'
+			   AND created_at >= date_trunc('day', now())`,
+			userID).Scan(&count)
+		if count > 0 {
+			return 0, nil // already rewarded today
+		}
+	}
+
+	if pts > 0 {
+		_, err := s.pool.Exec(ctx, `
+			INSERT INTO gamification.points_ledger (id, user_id, action, points)
+			VALUES ($1,$2,$3,$4)`, uuid.NewString(), userID, action, pts)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	// Advance streak
+	if err := s.touchStreak(ctx, userID); err != nil {
+		return pts, err
+	}
+
+	// Grant streak milestone bonuses (once each)
+	bonus, _ := s.grantStreakMilestones(ctx, userID)
+	pts += bonus
+
+	return pts, nil
+}
+
+// grantStreakMilestones checks if the user just hit a milestone streak and
+// grants a one-time bonus if they haven't received it yet.
+func (s *Store) grantStreakMilestones(ctx context.Context, userID string) (int, error) {
+	st, err := s.GetStreak(ctx, userID)
 	if err != nil {
 		return 0, err
 	}
-	if err := s.touchStreak(ctx, userID); err != nil {
-		return 0, err
+
+	milestones := []struct {
+		days   int
+		action string
+	}{
+		{7, "streak_7"},
+		{30, "streak_30"},
 	}
-	return pts, nil
+
+	total := 0
+	for _, m := range milestones {
+		if st.Current < m.days {
+			continue
+		}
+		// Check if this milestone was already granted
+		var count int
+		_ = s.pool.QueryRow(ctx,
+			`SELECT COUNT(*) FROM gamification.points_ledger
+			 WHERE user_id=$1 AND action=$2`, userID, m.action).Scan(&count)
+		if count > 0 {
+			continue
+		}
+		pts := pointsForAction[m.action]
+		_, err = s.pool.Exec(ctx,
+			`INSERT INTO gamification.points_ledger (id, user_id, action, points)
+			 VALUES ($1,$2,$3,$4)`, uuid.NewString(), userID, m.action, pts)
+		if err == nil {
+			total += pts
+		}
+	}
+	return total, nil
 }
 
 // touchStreak advances the streak if today is a new active day. A same-day action
@@ -164,6 +233,64 @@ func (s *Store) WeeklyCookCount(ctx context.Context, userID string) (int, error)
 		 WHERE user_id=$1 AND action='cook_meal' AND created_at >= now() - interval '7 days'`,
 		userID).Scan(&n)
 	return n, err
+}
+
+// DayActivity is points earned and actions taken on a single calendar day.
+type DayActivity struct {
+	Date    string         `json:"date"`    // "2026-06-24"
+	Points  int            `json:"points"`
+	Actions []ActionDetail `json:"actions"`
+}
+
+type ActionDetail struct {
+	Action    string `json:"action"`
+	Points    int    `json:"points"`
+	CreatedAt string `json:"created_at"`
+}
+
+// DailyHistory returns the last N days of activity for a user.
+func (s *Store) DailyHistory(ctx context.Context, userID string, days int) ([]DayActivity, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT action, points, created_at
+		FROM gamification.points_ledger
+		WHERE user_id=$1 AND created_at >= now() - make_interval(days => $2)
+		ORDER BY created_at DESC`, userID, days)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	dayMap := map[string]*DayActivity{}
+	var order []string
+
+	for rows.Next() {
+		var action string
+		var pts int
+		var at time.Time
+		if err := rows.Scan(&action, &pts, &at); err != nil {
+			return nil, err
+		}
+		dateStr := at.Format("2006-01-02")
+		if _, ok := dayMap[dateStr]; !ok {
+			dayMap[dateStr] = &DayActivity{Date: dateStr}
+			order = append(order, dateStr)
+		}
+		dayMap[dateStr].Points += pts
+		dayMap[dateStr].Actions = append(dayMap[dateStr].Actions, ActionDetail{
+			Action:    action,
+			Points:    pts,
+			CreatedAt: at.Format(time.RFC3339),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := make([]DayActivity, 0, len(order))
+	for _, d := range order {
+		result = append(result, *dayMap[d])
+	}
+	return result, nil
 }
 
 func truncDay(t time.Time) time.Time {

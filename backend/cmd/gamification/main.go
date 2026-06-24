@@ -30,7 +30,7 @@ func main() {
 	handler := gamification.NewHandler(gamification.NewStore(pool))
 
 	r := chi.NewRouter()
-	r.Use(middleware.Recover, middleware.Logger, middleware.UserContext)
+	r.Use(middleware.Recover, middleware.Logger, middleware.UserContext(nil))
 	r.Get("/healthz", httpx.Health("gamification"))
 	r.Route("/", handler.Routes)
 

@@ -1,9 +1,9 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import type { GamificationSummary, TodayNutrition } from '@pantrytoplate/shared';
+import { useAuth } from '@/lib/auth-context';
 
-// StatsHeader shows the two primary motivators at a glance: today's calorie ring
-// and the current streak + points, with the next reward to work toward.
 export function StatsHeader({
   nutrition,
   game,
@@ -13,6 +13,8 @@ export function StatsHeader({
   game: GamificationSummary | null;
   onShare: () => void;
 }) {
+  const router = useRouter();
+  const { user } = useAuth();
   const consumed = nutrition?.totals.calories ?? 0;
   const goal = nutrition?.goal.daily_calories ?? 2000;
   const pct = Math.min(100, Math.round((consumed / goal) * 100));
@@ -20,21 +22,39 @@ export function StatsHeader({
   return (
     <header className="rounded-2xl bg-gradient-to-br from-brand to-brand-dark p-5 text-white shadow-sm">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">PantryToPlate</h1>
-          <p className="text-sm text-white/80">Cook what you have.</p>
-        </div>
-        <button
-          onClick={onShare}
-          className="rounded-full bg-white/20 px-3 py-1 text-sm font-medium backdrop-blur"
-        >
-          Share 📤
+        <button onClick={() => router.push('/profile')} className="text-left">
+          <h1 className="text-xl font-bold">PantryPilot</h1>
+          <p className="text-sm text-white/80">Cook Smarter, Waste Less.</p>
         </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onShare}
+            className="rounded-full bg-white/20 px-3 py-1 text-sm font-medium backdrop-blur"
+          >
+            Share 📤
+          </button>
+          <button
+            onClick={() => router.push('/profile')}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 overflow-hidden"
+            aria-label="Profile"
+          >
+            {user?.avatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={user.avatar} alt={user.name} className="h-9 w-9 object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              <span className="text-lg">👤</span>
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 flex items-center gap-5">
         <CalorieRing pct={pct} consumed={consumed} goal={goal} />
-        <div className="flex-1">
+        {/* Streak block — tap to open gamification detail */}
+        <button
+          className="flex-1 text-left"
+          onClick={() => router.push('/gamification')}
+        >
           <div className="flex items-center gap-2 text-lg font-semibold">
             🔥 {game?.streak.current_streak ?? 0}-day streak
           </div>
@@ -44,7 +64,8 @@ export function StatsHeader({
               Next: {game.next_reward.title} at {game.next_reward.points_needed} pts
             </p>
           )}
-        </div>
+          <p className="mt-1 text-xs text-white/50">Tap to see details →</p>
+        </button>
       </div>
     </header>
   );

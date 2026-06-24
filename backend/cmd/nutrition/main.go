@@ -29,7 +29,7 @@ func main() {
 	handler := nutrition.NewHandler(nutrition.NewStore(pool))
 
 	r := chi.NewRouter()
-	r.Use(middleware.Recover, middleware.Logger, middleware.UserContext)
+	r.Use(middleware.Recover, middleware.Logger, middleware.UserContext(nil))
 	r.Get("/healthz", httpx.Health("nutrition"))
 	r.Route("/", handler.Routes)
 

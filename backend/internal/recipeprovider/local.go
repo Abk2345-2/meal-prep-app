@@ -36,6 +36,7 @@ func (l localRecipe) toRecipe() Recipe {
 		Instructions: l.Instructions,
 		Image:        l.Image,
 		SourceURL:    l.SourceURL,
+		YoutubeURL:   l.YoutubeURL,
 		Ingredients:  l.Ingredients,
 	}
 	if l.TimeMinutes > 0 {
@@ -98,6 +99,9 @@ func (p *LocalProvider) SearchByIngredients(_ context.Context, ingredients []str
 	}
 	return out, nil
 }
+
+// All returns every recipe — used by the service Search method.
+func (p *LocalProvider) All() []Recipe { return p.all }
 
 // GetByID returns full recipe detail from the in-memory map — no network call.
 func (p *LocalProvider) GetByID(_ context.Context, id string) (Recipe, error) {

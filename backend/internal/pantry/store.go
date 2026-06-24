@@ -29,16 +29,46 @@ type Store struct {
 
 func NewStore(pool *pgxpool.Pool) *Store { return &Store{pool: pool} }
 
-// Create inserts a parsed item for a user and returns the stored row.
+// Create upserts a pantry item. If an item with the same normalized_name
+// already exists for the user, its quantity is increased (units are unified
+// to grams when both sides are weight units; otherwise the incoming unit wins).
 func (s *Store) Create(ctx context.Context, userID string, p ParsedItem) (Item, error) {
-	id := uuid.NewString()
 	var expires *time.Time
 	if p.ExpiresAt != nil {
 		if t, err := time.Parse(time.RFC3339, *p.ExpiresAt); err == nil {
 			expires = &t
 		}
 	}
-	_, err := s.pool.Exec(ctx, `
+
+	// Check for an existing entry with the same normalized name.
+	var existingID string
+	var existingQty float64
+	var existingUnit string
+	err := s.pool.QueryRow(ctx,
+		`SELECT id, quantity, unit FROM pantry.items
+		 WHERE user_id=$1 AND normalized_name=$2
+		 LIMIT 1`,
+		userID, p.NormalizedName,
+	).Scan(&existingID, &existingQty, &existingUnit)
+
+	if err == nil {
+		// Merge: add quantities. If units differ, keep existing unit and convert
+		// only for the common weight pair g↔kg.
+		newQty := existingQty + convertQty(p.Quantity, p.Unit, existingUnit)
+		_, err = s.pool.Exec(ctx,
+			`UPDATE pantry.items
+			 SET quantity=$1, raw_text=$2, added_at=now()
+			 WHERE id=$3`,
+			newQty, p.RawText, existingID)
+		if err != nil {
+			return Item{}, err
+		}
+		return s.Get(ctx, userID, existingID)
+	}
+
+	// No existing entry — insert fresh.
+	id := uuid.NewString()
+	_, err = s.pool.Exec(ctx, `
 		INSERT INTO pantry.items
 			(id, user_id, raw_text, name, normalized_name, quantity, unit, category, expires_at)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
@@ -47,6 +77,22 @@ func (s *Store) Create(ctx context.Context, userID string, p ParsedItem) (Item, 
 		return Item{}, err
 	}
 	return s.Get(ctx, userID, id)
+}
+
+// convertQty converts qty in fromUnit to toUnit for the g↔kg pair.
+// All other unit combinations are returned as-is (caller uses fromUnit qty).
+func convertQty(qty float64, fromUnit, toUnit string) float64 {
+	if fromUnit == toUnit {
+		return qty
+	}
+	if fromUnit == "kg" && toUnit == "g" {
+		return qty * 1000
+	}
+	if fromUnit == "g" && toUnit == "kg" {
+		return qty / 1000
+	}
+	// Incompatible units — just add the number (e.g. "1 unit + 1 unit").
+	return qty
 }
 
 // Get fetches one item belonging to a user.
@@ -101,6 +147,46 @@ func (s *Store) UpdateQuantity(ctx context.Context, userID, id string, qty float
 		return Item{}, err
 	}
 	return s.Get(ctx, userID, id)
+}
+
+// Recategorize re-runs categoryFor on every item the user owns and persists
+// the new category. Returns the number of rows actually changed.
+func (s *Store) Recategorize(ctx context.Context, userID string) (int, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT id, normalized_name FROM pantry.items WHERE user_id=$1`, userID)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	type row struct {
+		id   string
+		name string
+	}
+	var items []row
+	for rows.Next() {
+		var r row
+		if err := rows.Scan(&r.id, &r.name); err != nil {
+			return 0, err
+		}
+		items = append(items, r)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+
+	updated := 0
+	for _, it := range items {
+		newCat := categoryFor(it.name)
+		tag, err := s.pool.Exec(ctx,
+			`UPDATE pantry.items SET category=$1 WHERE id=$2 AND category != $1`,
+			newCat, it.id)
+		if err != nil {
+			return updated, err
+		}
+		updated += int(tag.RowsAffected())
+	}
+	return updated, nil
 }
 
 // Delete removes an item.

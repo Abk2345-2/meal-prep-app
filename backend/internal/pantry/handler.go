@@ -30,6 +30,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Patch("/items/{id}", h.update)
 	r.Delete("/items/{id}", h.delete)
 	r.Post("/transcribe", h.transcribe)
+	r.Post("/recategorize", h.recategorize)
 }
 
 type parseRequest struct {
@@ -143,6 +144,18 @@ type transcribeRequest struct {
 
 type transcribeResponse struct {
 	Text string `json:"text"`
+}
+
+// recategorize re-applies the current categoryFor logic to all existing items
+// for the user, fixing stale categories like "produce" and "other".
+func (h *Handler) recategorize(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.UserID(r.Context())
+	updated, err := h.store.Recategorize(r.Context(), userID)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"updated": updated})
 }
 
 // decodeBase64 decodes a base64 string to bytes

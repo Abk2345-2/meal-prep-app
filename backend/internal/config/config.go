@@ -43,6 +43,20 @@ type Config struct {
 	// GroqAPIKey is used by the pantry transcription endpoint.
 	GroqAPIKey string
 
+	// Google OAuth 2.0 credentials (from Google Cloud Console).
+	GoogleClientID     string
+	GoogleClientSecret string
+	// GoogleCallbackURL must match the redirect URI registered in Google Cloud Console.
+	// Example: http://localhost:8080/api/auth/callback
+	GoogleCallbackURL string
+	// FrontendURL is the web app origin used to redirect after OAuth login.
+	// Example: http://localhost:3000
+	FrontendURL string
+
+	// JWTSecret is the HMAC-SHA256 signing key for issued tokens.
+	// Must be at least 32 bytes of random data in production.
+	JWTSecret string
+
 	// CORS allow-list for the browser frontend.
 	CORSAllowedOrigins string
 }
@@ -71,6 +85,12 @@ func Load() Config {
 		SpoonacularBaseURL: env("SPOONACULAR_BASE_URL", "https://api.spoonacular.com"),
 
 		GroqAPIKey: env("GROQ_API_KEY", ""),
+
+		GoogleClientID:     env("GOOGLE_CLIENT_ID", ""),
+		GoogleClientSecret: env("GOOGLE_CLIENT_SECRET", ""),
+		GoogleCallbackURL:  env("GOOGLE_CALLBACK_URL", "http://localhost:8080/api/auth/callback"),
+		FrontendURL:        env("FRONTEND_URL", "http://localhost:3000"),
+		JWTSecret:          env("JWT_SECRET", "dev-secret-change-in-production"),
 
 		CORSAllowedOrigins: env("CORS_ALLOWED_ORIGINS", "*"),
 	}

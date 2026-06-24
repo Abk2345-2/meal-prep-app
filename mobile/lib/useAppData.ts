@@ -13,7 +13,14 @@ export function useAppData() {
   const [items, setItems] = useState<PantryItem[]>([]);
   const [recipes, setRecipes] = useState<RecipeSuggestion[]>([]);
   const [recipesLoading, setRecipesLoading] = useState(false);
-  const [maxTime, setMaxTime] = useState(30);
+
+  // Filter state — mirrors web (selectedTime is the "value" key, min/maxTime sent to API)
+  const [selectedTime, setSelectedTime] = useState(15);
+  const [minTime, setMinTime] = useState(0);
+  const [maxTime, setMaxTime] = useState(15);
+  const [selectedArea, setSelectedArea] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+
   const [nutrition, setNutrition] = useState<TodayNutrition | null>(null);
   const [game, setGame] = useState<GamificationSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -28,22 +35,40 @@ export function useAppData() {
     }
   }, []);
 
-  const refreshRecipes = useCallback(async (pantry: PantryItem[], time: number) => {
-    const ingredients = pantry.map((i) => i.normalized_name);
-    if (ingredients.length === 0) {
-      setRecipes([]);
-      return;
-    }
-    setRecipesLoading(true);
-    try {
-      const { recipes } = await api.suggestRecipes({ ingredients, max_time: time, limit: 8 });
-      setRecipes(recipes);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setRecipesLoading(false);
-    }
-  }, []);
+  const refreshRecipes = useCallback(
+    async (
+      pantry: PantryItem[],
+      _minTime: number,
+      _maxTime: number,
+      area: string,
+      category: string,
+    ) => {
+      const ingredients = pantry.map((i) => i.normalized_name);
+      if (ingredients.length === 0) {
+        setRecipes([]);
+        return;
+      }
+      setRecipesLoading(true);
+      try {
+        const params: Parameters<typeof api.suggestRecipes>[0] = {
+          ingredients,
+          min_time: _minTime,
+          area,
+          category,
+          limit: 8,
+        };
+        // maxTime = 0 means "no upper limit" (the 2hr+ tab)
+        if (_maxTime > 0) params.max_time = _maxTime;
+        const { recipes } = await api.suggestRecipes(params);
+        setRecipes(recipes);
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setRecipesLoading(false);
+      }
+    },
+    [],
+  );
 
   const refreshPantry = useCallback(async () => {
     try {
@@ -58,16 +83,24 @@ export function useAppData() {
 
   const refreshAll = useCallback(async () => {
     const pantry = await refreshPantry();
-    await refreshRecipes(pantry, maxTime);
+    await refreshRecipes(pantry, minTime, maxTime, selectedArea, selectedCategory);
     await refreshStats();
-  }, [refreshPantry, refreshRecipes, refreshStats, maxTime]);
+  }, [refreshPantry, refreshRecipes, refreshStats, minTime, maxTime, selectedArea, selectedCategory]);
 
-  const selectTime = useCallback(
-    (t: number) => {
-      setMaxTime(t);
-      refreshRecipes(items, t);
+  // selectFilters — called when the filter drawer is applied
+  const selectFilters = useCallback(
+    (value: number, _minTime: number, _maxTime: number, area: string, category: string) => {
+      setSelectedTime(value);
+      setMinTime(_minTime);
+      setMaxTime(_maxTime);
+      setSelectedArea(area);
+      setSelectedCategory(category);
+      // Refresh recipes immediately with the new filter values (items is captured from closure)
+      refreshPantry().then((pantry) => {
+        refreshRecipes(pantry, _minTime, _maxTime, area, category);
+      });
     },
-    [items, refreshRecipes],
+    [refreshPantry, refreshRecipes],
   );
 
   useEffect(() => {
@@ -79,13 +112,15 @@ export function useAppData() {
     items,
     recipes,
     recipesLoading,
-    maxTime,
+    selectedTime,
+    selectedArea,
+    selectedCategory,
     nutrition,
     game,
     error,
     refreshAll,
     refreshPantry,
     refreshStats,
-    selectTime,
+    selectFilters,
   };
 }

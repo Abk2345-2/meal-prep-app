@@ -28,7 +28,7 @@ func main() {
 	handler := recipe.NewHandler(recipe.NewService(provider))
 
 	r := chi.NewRouter()
-	r.Use(middleware.Recover, middleware.Logger, middleware.UserContext)
+	r.Use(middleware.Recover, middleware.Logger, middleware.UserContext(nil))
 	r.Get("/healthz", httpx.Health("recipe"))
 	r.Route("/", handler.Routes)
 

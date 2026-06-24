@@ -30,7 +30,7 @@ func main() {
 	handler := pantry.NewHandler(pantry.NewStore(pool))
 
 	r := chi.NewRouter()
-	r.Use(middleware.Recover, middleware.Logger, middleware.UserContext)
+	r.Use(middleware.Recover, middleware.Logger, middleware.UserContext(nil))
 	r.Get("/healthz", httpx.Health("pantry"))
 	r.Route("/", handler.Routes)
 

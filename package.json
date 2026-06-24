@@ -10,5 +10,8 @@
   "scripts": {
     "dev:web": "npm run dev --workspace web",
     "build:shared": "npm run build --workspace @pantrytoplate/shared"
+  },
+  "dependencies": {
+    "vercel": "^54.15.1"
   }
 }

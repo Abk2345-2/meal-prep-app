@@ -18,6 +18,7 @@ type Recipe struct {
 	Carbs        int          `json:"carbs_g"`
 	Fat          int          `json:"fat_g"`
 	SourceURL    string       `json:"source_url,omitempty"`
+	YoutubeURL   string       `json:"youtube_url,omitempty"`
 
 	// PreScored is set by providers (e.g. Spoonacular) that already know the
 	// match breakdown from the search response. When true the service layer

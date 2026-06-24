@@ -88,6 +88,58 @@ type Totals struct {
 	Meals    int `json:"meals"`
 }
 
+// DeleteLog removes a meal log entry belonging to the user.
+func (s *Store) DeleteLog(ctx context.Context, userID, id string) error {
+	_, err := s.pool.Exec(ctx,
+		`DELETE FROM nutrition.meal_logs WHERE id=$1 AND user_id=$2`, id, userID)
+	return err
+}
+
+// DayLog groups meal logs by date for the history view.
+type DayLog struct {
+	Date     string    `json:"date"`
+	Calories int       `json:"calories"`
+	Meals    []MealLog `json:"meals"`
+}
+
+// History returns meal logs grouped by day for the last N days.
+func (s *Store) History(ctx context.Context, userID string, days int) ([]DayLog, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, user_id, source, calories, protein_g, carbs_g, fat_g, cooked_at
+		FROM nutrition.meal_logs
+		WHERE user_id=$1 AND cooked_at >= now() - make_interval(days => $2)
+		ORDER BY cooked_at DESC`, userID, days)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	dayMap := map[string]*DayLog{}
+	var order []string
+	for rows.Next() {
+		var m MealLog
+		if err := rows.Scan(&m.ID, &m.UserID, &m.Source, &m.Calories,
+			&m.ProteinG, &m.CarbsG, &m.FatG, &m.CookedAt); err != nil {
+			return nil, err
+		}
+		d := m.CookedAt.Format("2006-01-02")
+		if _, ok := dayMap[d]; !ok {
+			dayMap[d] = &DayLog{Date: d}
+			order = append(order, d)
+		}
+		dayMap[d].Calories += m.Calories
+		dayMap[d].Meals = append(dayMap[d].Meals, m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	result := make([]DayLog, 0, len(order))
+	for _, d := range order {
+		result = append(result, *dayMap[d])
+	}
+	return result, nil
+}
+
 // TodayTotals returns the sum of meals logged since local midnight.
 func (s *Store) TodayTotals(ctx context.Context, userID string) (Totals, []MealLog, error) {
 	rows, err := s.pool.Query(ctx, `

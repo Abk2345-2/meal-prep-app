@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppData } from '../../lib/useAppData';
@@ -6,12 +6,29 @@ import { api } from '../../lib/api';
 
 const brand = '#16a34a';
 
+type MealEntry = {
+  id: string;
+  source: string;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  cooked_at: string;
+};
+type DayLog = { date: string; calories: number; meals: MealEntry[] };
+
 export default function TrackScreen() {
   const { nutrition, refreshStats } = useAppData();
 
   const [calories, setCalories] = useState('');
   const [source, setSource] = useState('');
   const [logging, setLogging] = useState(false);
+
+  // History state
+  const [history, setHistory] = useState<DayLog[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [expandedDay, setExpandedDay] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<string | null>(null);
 
   const consumed = nutrition?.totals.calories ?? 0;
   const goal = nutrition?.goal.daily_calories ?? 2000;
@@ -24,20 +41,47 @@ export default function TrackScreen() {
   const fatConsumed = nutrition?.totals.fat_g ?? 0;
   const fatGoal = nutrition?.goal.fat_g ?? 65;
 
+  const loadHistory = useCallback(() => {
+    setHistoryLoading(true);
+    api
+      .nutritionHistory(30)
+      .then((d) => setHistory(d.history))
+      .finally(() => setHistoryLoading(false));
+  }, []);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+
   async function logMeal() {
     const cal = parseInt(calories, 10);
     if (!cal || cal <= 0) return;
     setLogging(true);
     try {
-      await api.logMeal({ source: source.trim() || 'Quick log', calories: cal });
+      await api.logMeal({ source: source.trim() || 'Quick log', calories: cal, protein_g: 0, carbs_g: 0, fat_g: 0 });
       await api.sendEvent('cook_meal');
       setCalories('');
       setSource('');
       await refreshStats();
+      loadHistory();
     } finally {
       setLogging(false);
     }
   }
+
+  const removeMeal = useCallback(
+    async (mealId: string) => {
+      setRemoving(mealId);
+      try {
+        await api.deleteMealLog(mealId);
+        await refreshStats();
+        loadHistory();
+      } finally {
+        setRemoving(null);
+      }
+    },
+    [refreshStats, loadHistory],
+  );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
@@ -171,37 +215,165 @@ export default function TrackScreen() {
                 style={{
                   flexDirection: 'row',
                   justifyContent: 'space-between',
+                  alignItems: 'center',
                   paddingVertical: 8,
                   borderTopWidth: 1,
                   borderTopColor: '#f1f5f9',
                 }}
               >
-                <Text style={{ fontSize: 14, color: '#334155', flex: 1 }}>{m.source}</Text>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#15803d' }}>
-                  {m.calories} cal
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, color: '#334155' }}>{m.source}</Text>
+                  <Text style={{ fontSize: 12, color: '#94a3b8' }}>
+                    {m.calories} cal · P {m.protein_g}g · C {m.carbs_g}g · F {m.fat_g}g
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => removeMeal(m.id)}
+                  disabled={removing === m.id}
+                  style={{
+                    marginLeft: 10,
+                    borderWidth: 1,
+                    borderColor: '#fca5a5',
+                    borderRadius: 8,
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    opacity: removing === m.id ? 0.4 : 1,
+                  }}
+                >
+                  <Text style={{ fontSize: 12, color: '#ef4444' }}>
+                    {removing === m.id ? '…' : 'Remove'}
+                  </Text>
+                </Pressable>
               </View>
             ))}
           </View>
         )}
+
+        {/* 30-day history */}
+        <View>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: '#0f172a', marginBottom: 10 }}>
+            📋 Last 30 days
+          </Text>
+
+          {historyLoading && (
+            <Text style={{ textAlign: 'center', color: '#94a3b8', paddingVertical: 16 }}>Loading…</Text>
+          )}
+
+          {!historyLoading && history.length === 0 && (
+            <Text style={{ textAlign: 'center', color: '#94a3b8', fontSize: 14, paddingVertical: 16 }}>
+              No meals logged yet. Start cooking!
+            </Text>
+          )}
+
+          {history.map((day) => {
+            const isOpen = expandedDay === day.date;
+            return (
+              <View
+                key={day.date}
+                style={{
+                  backgroundColor: '#fff',
+                  borderRadius: 16,
+                  overflow: 'hidden',
+                  marginBottom: 10,
+                  shadowColor: '#000',
+                  shadowOpacity: 0.05,
+                  shadowRadius: 6,
+                  shadowOffset: { width: 0, height: 2 },
+                }}
+              >
+                <Pressable
+                  onPress={() => setExpandedDay(isOpen ? null : day.date)}
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: 14,
+                  }}
+                >
+                  <View>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#0f172a' }}>
+                      {new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                      })}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: '#94a3b8' }}>
+                      {day.meals.length} meal{day.meals.length !== 1 ? 's' : ''}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{ backgroundColor: '#f1f5f9', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#475569' }}>
+                        {day.calories} cal
+                      </Text>
+                    </View>
+                    <Text style={{ color: '#94a3b8' }}>{isOpen ? '▲' : '▼'}</Text>
+                  </View>
+                </Pressable>
+
+                {isOpen && (
+                  <View style={{ borderTopWidth: 1, borderTopColor: '#f1f5f9' }}>
+                    {day.meals.map((m, i) => (
+                      <View
+                        key={m.id}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          padding: 12,
+                          backgroundColor: i % 2 === 0 ? '#f8fafc' : '#fff',
+                        }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 14, fontWeight: '500', color: '#0f172a' }} numberOfLines={1}>
+                            {m.source}
+                          </Text>
+                          <Text style={{ fontSize: 12, color: '#94a3b8' }}>
+                            {m.calories} cal · P {m.protein_g}g · C {m.carbs_g}g · F {m.fat_g}g
+                            {'  ·  '}
+                            {new Date(m.cooked_at).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </Text>
+                        </View>
+                        <Pressable
+                          onPress={() => removeMeal(m.id)}
+                          disabled={removing === m.id}
+                          style={{
+                            marginLeft: 10,
+                            borderWidth: 1,
+                            borderColor: '#fca5a5',
+                            borderRadius: 8,
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                            opacity: removing === m.id ? 0.4 : 1,
+                          }}
+                        >
+                          <Text style={{ fontSize: 12, color: '#ef4444' }}>
+                            {removing === m.id ? '…' : 'Remove'}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            );
+          })}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// Simple donut-style ring using a thick border + clip trick.
-// No extra dependencies needed.
 function CalorieRing({ pct, consumed, goal }: { pct: number; consumed: number; goal: number }) {
   const size = 160;
   const thickness = 14;
-  // We fake the arc by layering two semicircle clips.
-  // For simplicity we render a progress-filled ring via a border + rotation approach.
-  // The "ring" is a View with large borderRadius (circle), with a colored arc overlay.
   const deg = Math.round(pct * 360);
 
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      {/* Track (gray full circle) */}
       <View
         style={{
           position: 'absolute',
@@ -212,7 +384,6 @@ function CalorieRing({ pct, consumed, goal }: { pct: number; consumed: number; g
           borderColor: '#e2e8f0',
         }}
       />
-      {/* Progress fill — left half */}
       {deg > 0 && (
         <View
           style={{
@@ -227,7 +398,6 @@ function CalorieRing({ pct, consumed, goal }: { pct: number; consumed: number; g
           }}
         />
       )}
-      {/* Progress fill — right half (only shown when > 180°) */}
       {deg > 180 && (
         <View
           style={{
@@ -268,9 +438,7 @@ function MacroBar({
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
         <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '500' }}>{label}</Text>
         <Text style={{ fontSize: 13, color: '#64748b' }}>
-          {consumed}
-          {unit} / {goal}
-          {unit}
+          {consumed}{unit} / {goal}{unit}
         </Text>
       </View>
       <View style={{ height: 8, backgroundColor: '#f1f5f9', borderRadius: 999 }}>

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { parseText, type ParsedItem } from '@pantrytoplate/shared';
 import { api } from '@/lib/api';
 import { useGroqSpeech } from '@/lib/useGroqSpeech';
+import { formatGroceryTranscript } from '@/lib/groceryTranscript';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
@@ -26,10 +27,11 @@ export function AddGroceries({ onSaved }: { onSaved: () => void }) {
     requestPermission,
   } = useGroqSpeech(API_BASE);
 
-  // When transcription completes, append the result to the input box.
+  // When transcription completes, format as comma-separated items and append.
   useEffect(() => {
     if (transcript) {
-      setText((prev) => (prev ? `${prev}, ${transcript}` : transcript));
+      const formatted = formatGroceryTranscript(transcript);
+      setText((prev) => (prev ? `${prev}, ${formatted}` : formatted));
       reset();
     }
   }, [transcript, reset]);

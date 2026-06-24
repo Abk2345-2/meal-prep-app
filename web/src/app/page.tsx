@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type {
   GamificationSummary,
   PantryItem,
@@ -8,16 +9,54 @@ import type {
   TodayNutrition,
 } from '@pantrytoplate/shared';
 import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import { AddGroceries } from '@/components/AddGroceries';
 import { PantrySummary } from '@/components/PantrySummary';
 import { RecipeStrip } from '@/components/RecipeStrip';
 import { StatsHeader } from '@/components/StatsHeader';
 
+// Read a value from sessionStorage; returns the fallback if not found or SSR.
+function readSession<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = sessionStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeSession(key: string, value: unknown) {
+  if (typeof window === 'undefined') return;
+  try { sessionStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+
+const DEFAULT_TIME = { value: 15, minTime: 0, maxTime: 15 };
+
 export default function Home() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  // Redirect to /login once auth state is resolved and no user is present.
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [authLoading, user, router]);
+
   const [items, setItems] = useState<PantryItem[]>([]);
   const [recipes, setRecipes] = useState<RecipeSuggestion[]>([]);
   const [recipesLoading, setRecipesLoading] = useState(false);
-  const [selectedTime, setSelectedTime] = useState(30);
+  // Restore filter state from sessionStorage so it survives navigating to recipe detail and back.
+  const [timeFilter, setTimeFilter] = useState(() =>
+    readSession('rf_time', DEFAULT_TIME)
+  );
+  const [selectedArea, setSelectedArea] = useState(() =>
+    readSession<string>('rf_area', '')
+  );
+  const [selectedCategory, setSelectedCategory] = useState(() =>
+    readSession<string>('rf_category', '')
+  );
   const [nutrition, setNutrition] = useState<TodayNutrition | null>(null);
   const [game, setGame] = useState<GamificationSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,9 +82,14 @@ export default function Home() {
     }
   }, []);
 
-  // Recompute recipe suggestions whenever pantry or selected time changes.
   const refreshRecipes = useCallback(
-    async (pantry: PantryItem[], maxTime: number) => {
+    async (
+      pantry: PantryItem[],
+      minTime: number,
+      maxTime: number,
+      area: string,
+      category: string,
+    ) => {
       const ingredients = pantry.map((i) => i.normalized_name);
       if (ingredients.length === 0) {
         setRecipes([]);
@@ -53,11 +97,16 @@ export default function Home() {
       }
       setRecipesLoading(true);
       try {
-        const { recipes } = await api.suggestRecipes({
+        const params: Parameters<typeof api.suggestRecipes>[0] = {
           ingredients,
-          max_time: maxTime,
+          min_time: minTime,
+          area,
+          category,
           limit: 8,
-        });
+        };
+        // maxTime = 0 means "no upper limit" (the 2hr+ tab)
+        if (maxTime > 0) params.max_time = maxTime;
+        const { recipes } = await api.suggestRecipes(params);
         setRecipes(recipes);
       } catch (e) {
         setError((e as Error).message);
@@ -68,11 +117,10 @@ export default function Home() {
     [],
   );
 
-  // Initial load.
   useEffect(() => {
     (async () => {
       const pantry = await refreshPantry();
-      await refreshRecipes(pantry, selectedTime);
+      await refreshRecipes(pantry, timeFilter.minTime, timeFilter.maxTime, selectedArea, selectedCategory);
       await refreshStats();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -80,25 +128,45 @@ export default function Home() {
 
   const onSaved = useCallback(async () => {
     const pantry = await refreshPantry();
-    await refreshRecipes(pantry, selectedTime);
+    await refreshRecipes(pantry, timeFilter.minTime, timeFilter.maxTime, selectedArea, selectedCategory);
     await refreshStats();
-  }, [refreshPantry, refreshRecipes, refreshStats, selectedTime]);
+  }, [refreshPantry, refreshRecipes, refreshStats, timeFilter, selectedArea, selectedCategory]);
 
   const onSelectTime = useCallback(
-    (t: number) => {
-      setSelectedTime(t);
-      refreshRecipes(items, t);
+    (value: number, minTime: number, maxTime: number) => {
+      const tf = { value, minTime, maxTime };
+      setTimeFilter(tf);
+      writeSession('rf_time', tf);
+      refreshRecipes(items, minTime, maxTime, selectedArea, selectedCategory);
     },
-    [items, refreshRecipes],
+    [items, refreshRecipes, selectedArea, selectedCategory],
+  );
+
+  const onSelectArea = useCallback(
+    (area: string) => {
+      setSelectedArea(area);
+      writeSession('rf_area', area);
+      refreshRecipes(items, timeFilter.minTime, timeFilter.maxTime, area, selectedCategory);
+    },
+    [items, refreshRecipes, timeFilter, selectedCategory],
+  );
+
+  const onSelectCategory = useCallback(
+    (category: string) => {
+      setSelectedCategory(category);
+      writeSession('rf_category', category);
+      refreshRecipes(items, timeFilter.minTime, timeFilter.maxTime, selectedArea, category);
+    },
+    [items, refreshRecipes, timeFilter, selectedArea],
   );
 
   const onDelete = useCallback(
     async (id: string) => {
       await api.deletePantryItem(id);
       const pantry = await refreshPantry();
-      await refreshRecipes(pantry, selectedTime);
+      await refreshRecipes(pantry, timeFilter.minTime, timeFilter.maxTime, selectedArea, selectedCategory);
     },
-    [refreshPantry, refreshRecipes, selectedTime],
+    [refreshPantry, refreshRecipes, timeFilter, selectedArea, selectedCategory],
   );
 
   const onShare = useCallback(async () => {
@@ -117,6 +185,20 @@ export default function Home() {
     }
   }, [refreshStats]);
 
+  // Single stable root element — server and client always render the same
+  // outer <main> so React hydration never sees a mismatch.
+  // While auth is resolving (or user is absent) we show a full-screen spinner
+  // inside the same <main> instead of swapping to a different element.
+  if (authLoading || !user) {
+    return (
+      <main className="mx-auto max-w-md space-y-4 p-4 pb-12">
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <p className="text-sm text-slate-400">Loading…</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto max-w-md space-y-4 p-4 pb-12">
       <StatsHeader nutrition={nutrition} game={game} onShare={onShare} />
@@ -124,8 +206,12 @@ export default function Home() {
       <RecipeStrip
         recipes={recipes}
         loading={recipesLoading}
-        selectedTime={selectedTime}
+        selectedTime={timeFilter.value}
         onSelectTime={onSelectTime}
+        selectedArea={selectedArea}
+        onSelectArea={onSelectArea}
+        selectedCategory={selectedCategory}
+        onSelectCategory={onSelectCategory}
         onCooked={refreshStats}
       />
       <PantrySummary items={items} onDelete={onDelete} />

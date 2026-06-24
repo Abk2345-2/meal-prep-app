@@ -3,6 +3,7 @@ package gamification
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pantrytoplate/backend/internal/httpx"
@@ -18,6 +19,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/event", h.event)
 	r.Get("/rewards", h.rewards)
 	r.Get("/story", h.story)
+	r.Get("/history", h.history)
 }
 
 // summary returns streak + total points + reward progress for the header UI.
@@ -85,6 +87,31 @@ func (h *Handler) rewards(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, map[string]any{"rewards": rewards})
 }
 
+// history returns day-wise activity for the last N days (default 30).
+func (h *Handler) history(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.UserID(r.Context())
+	days := 30
+	if d := r.URL.Query().Get("days"); d != "" {
+		if n, err := strconv.Atoi(d); err == nil && n > 0 && n <= 365 {
+			days = n
+		}
+	}
+	history, err := h.store.DailyHistory(r.Context(), userID, days)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	streak, _ := h.store.GetStreak(r.Context(), userID)
+	points, _ := h.store.TotalPoints(r.Context(), userID)
+	rewards, _ := h.store.Rewards(r.Context(), userID)
+	httpx.JSON(w, http.StatusOK, map[string]any{
+		"history":      history,
+		"streak":       streak,
+		"total_points": points,
+		"rewards":      rewards,
+	})
+}
+
 // story builds a shareable, pride-worthy summary of recent activity.
 func (h *Handler) story(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.UserID(r.Context())
@@ -92,10 +119,10 @@ func (h *Handler) story(w http.ResponseWriter, r *http.Request) {
 	streak, _ := h.store.GetStreak(r.Context(), userID)
 	points, _ := h.store.TotalPoints(r.Context(), userID)
 
-	text := fmt.Sprintf("This week I cooked %d meals from my pantry 🍳 — %d-day streak! 🔥 #PantryToPlate",
+	text := fmt.Sprintf("This week I cooked %d meals from my pantry 🍳 — %d-day streak! 🔥 #PantryPilot",
 		cooked, streak.Current)
 	if cooked == 0 {
-		text = fmt.Sprintf("Building my cooking habit on PantryToPlate — %d-day streak! 🔥 #PantryToPlate",
+		text = fmt.Sprintf("Building my cooking habit on PantryPilot — %d-day streak! 🔥 #PantryPilot",
 			streak.Current)
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{

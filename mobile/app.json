@@ -20,7 +20,14 @@
     "plugins": [
       "expo-router",
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      "expo-secure-store",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow PantryToPlate to use your microphone for voice grocery input."
+        }
+      ]
     ],
     "extra": {
       "apiBaseUrl": "http://localhost:8080"

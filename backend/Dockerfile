@@ -1,6 +1,7 @@
 # Multi-stage build. One image builds all five service binaries; the SERVICE
 # build-arg selects which binary the final image runs.
-FROM golang:1.22-alpine AS build
+FROM golang:1.24-alpine AS build
+ENV GOTOOLCHAIN=auto
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download

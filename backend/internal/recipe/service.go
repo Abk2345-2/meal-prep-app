@@ -4,11 +4,25 @@ package recipe
 
 import (
 	"context"
+	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/pantrytoplate/backend/internal/recipeprovider"
 )
+
+// wordMatch returns true when the filter string appears as a whole word (or word
+// prefix) inside the field. "indian" matches "Indian", "North Indian Recipes" but
+// NOT "Indian" inside "Italian Recipes" if spelled differently.
+// We use \b word boundaries to avoid partial-word collisions.
+func wordMatch(field, filter string) bool {
+	if filter == "" {
+		return true
+	}
+	// Fast path: exact word match
+	re := regexp.MustCompile(`(?i)\b` + regexp.QuoteMeta(filter) + `\b`)
+	return re.MatchString(field)
+}
 
 // Service ranks provider recipes against a user's available ingredients.
 type Service struct {
@@ -28,9 +42,23 @@ type Suggestion struct {
 // SuggestParams controls a suggestion query.
 type SuggestParams struct {
 	Ingredients []string // normalized pantry ingredient names
-	MaxTime     int      // minutes; 0 = no limit
-	MinMatch    float64  // minimum match score, default 0.3
+	MinTime     int      // minutes lower bound (exclusive); 0 = no lower bound
+	MaxTime     int      // minutes upper bound (inclusive); 0 = no limit
+	Area        string   // filter by cuisine/area substring, case-insensitive; "" = all
+	Category    string   // filter by course/category substring, e.g. "breakfast", "dessert"
+	MinMatch    float64  // minimum match score, default 0.2
 	Limit       int      // max results, default 8
+}
+
+// SearchParams controls the freetext search endpoint.
+type SearchParams struct {
+	Query    string // free-text: matched against title, area, category
+	Area     string // cuisine filter (substring)
+	Category string // course filter (substring)
+	MaxTime  int    // 0 = no limit
+	MinTime  int    // 0 = no lower bound
+	Limit    int    // default 20
+	Offset   int    // for pagination
 }
 
 // Suggest fetches candidate recipes (seeded by the user's ingredients), scores
@@ -38,7 +66,7 @@ type SuggestParams struct {
 // top N. Mirrors the spec's suggest_recipes pseudocode.
 func (s *Service) Suggest(ctx context.Context, p SuggestParams) ([]Suggestion, error) {
 	if p.MinMatch == 0 {
-		p.MinMatch = 0.3
+		p.MinMatch = 0.2
 	}
 	if p.Limit == 0 {
 		p.Limit = 8
@@ -70,10 +98,20 @@ func (s *Service) Suggest(ctx context.Context, p SuggestParams) ([]Suggestion, e
 	}
 	var ranked []scored
 
+	areaFilter     := strings.ToLower(strings.TrimSpace(p.Area))
+	categoryFilter := strings.ToLower(strings.TrimSpace(p.Category))
+
 	for _, c := range candidates {
 		if c.PreScored {
 			// Use the match data from the search response; skip GetByID for now.
 			if c.PreMatchScore < p.MinMatch {
+				continue
+			}
+			// Area filter on stub (LocalProvider always populates Area on the stub)
+			if areaFilter != "" && !wordMatch(c.Area, areaFilter) {
+				continue
+			}
+			if categoryFilter != "" && !wordMatch(c.Category, categoryFilter) {
 				continue
 			}
 			ranked = append(ranked, scored{
@@ -92,6 +130,15 @@ func (s *Service) Suggest(ctx context.Context, p SuggestParams) ([]Suggestion, e
 				continue
 			}
 			if p.MaxTime > 0 && full.TimeMinutes > p.MaxTime {
+				continue
+			}
+			if p.MinTime > 0 && full.TimeMinutes <= p.MinTime {
+				continue
+			}
+			if areaFilter != "" && !wordMatch(full.Area, areaFilter) {
+				continue
+			}
+			if categoryFilter != "" && !wordMatch(full.Category, categoryFilter) {
 				continue
 			}
 			sg := score(full, owned)
@@ -126,6 +173,9 @@ func (s *Service) Suggest(ctx context.Context, p SuggestParams) ([]Suggestion, e
 			if p.MaxTime > 0 && full.TimeMinutes > p.MaxTime {
 				continue
 			}
+			if p.MinTime > 0 && full.TimeMinutes <= p.MinTime {
+				continue
+			}
 			sg := r.sg
 			sg.Recipe = full
 			suggestions = append(suggestions, sg)
@@ -140,6 +190,75 @@ func (s *Service) Suggest(ctx context.Context, p SuggestParams) ([]Suggestion, e
 // GetByID returns full recipe detail.
 func (s *Service) GetByID(ctx context.Context, id string) (recipeprovider.Recipe, error) {
 	return s.provider.GetByID(ctx, id)
+}
+
+// Search performs freetext + filter search directly on the local recipe index.
+// Works only with LocalProvider; returns empty for other providers.
+// SearchResult wraps Recipe with the same suggestion fields (zeroed) so the
+// frontend can use a single RecipeCard component for both suggest and search.
+type SearchResult struct {
+	recipeprovider.Recipe
+	MatchScore          float64  `json:"match_score"`
+	MatchingIngredients []string `json:"matching_ingredients"`
+	MissingIngredients  []string `json:"missing_ingredients"`
+}
+
+func (s *Service) Search(ctx context.Context, p SearchParams) ([]SearchResult, error) {
+	if p.Limit == 0 {
+		p.Limit = 20
+	}
+
+	lp, ok := s.provider.(interface {
+		All() []recipeprovider.Recipe
+	})
+	if !ok {
+		return nil, nil // not a local provider
+	}
+
+	query    := strings.ToLower(strings.TrimSpace(p.Query))
+	area     := strings.ToLower(strings.TrimSpace(p.Area))
+	category := strings.ToLower(strings.TrimSpace(p.Category))
+
+	var results []SearchResult
+	for _, r := range lp.All() {
+		// Time filter
+		if p.MaxTime > 0 && r.TimeMinutes > p.MaxTime {
+			continue
+		}
+		if p.MinTime > 0 && r.TimeMinutes <= p.MinTime {
+			continue
+		}
+		// Area filter
+		if area != "" && !wordMatch(r.Area, area) {
+			continue
+		}
+		// Category filter
+		if category != "" && !wordMatch(r.Category, category) {
+			continue
+		}
+		// Full-text: match title, area, or category
+		if query != "" {
+			titleMatch    := strings.Contains(strings.ToLower(r.Title), query)
+			areaMatch     := strings.Contains(strings.ToLower(r.Area), query)
+			categoryMatch := strings.Contains(strings.ToLower(r.Category), query)
+			if !titleMatch && !areaMatch && !categoryMatch {
+				continue
+			}
+		}
+		results = append(results, SearchResult{
+			Recipe:              r,
+			MatchScore:          0,
+			MatchingIngredients: []string{},
+			MissingIngredients:  []string{},
+		})
+		if len(results) >= p.Offset+p.Limit {
+			break
+		}
+	}
+	if p.Offset >= len(results) {
+		return []SearchResult{}, nil
+	}
+	return results[p.Offset:], nil
 }
 
 // score computes ingredient overlap between a recipe and the owned set.
