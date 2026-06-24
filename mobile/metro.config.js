@@ -1,5 +1,3 @@
-// Metro config that lets the app import the raw-TS @pantrytoplate/shared package
-// from the monorepo. We watch the packages dir and let Metro transpile its TS.
 const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
 
@@ -16,5 +14,12 @@ config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
   path.resolve(monorepoRoot, 'node_modules'),
 ];
+
+// Use hermes-stable transform profile so Metro transpiles ES2022 private
+// fields (#foo) in node_modules down to something Hermes can actually parse.
+config.transformer = {
+  ...config.transformer,
+  unstable_transformProfile: 'hermes-stable',
+};
 
 module.exports = config;
