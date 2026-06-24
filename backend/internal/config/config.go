@@ -59,6 +59,10 @@ type Config struct {
 
 	// CORS allow-list for the browser frontend.
 	CORSAllowedOrigins string
+
+	// SkipMigrations disables the on-boot migration runner.
+	// Set SKIP_MIGRATIONS=true when the database is managed externally (e.g. Supabase).
+	SkipMigrations bool
 }
 
 // Load reads configuration from the environment, applying defaults.
@@ -93,6 +97,7 @@ func Load() Config {
 		JWTSecret:          env("JWT_SECRET", "dev-secret-change-in-production"),
 
 		CORSAllowedOrigins: env("CORS_ALLOWED_ORIGINS", "*"),
+		SkipMigrations:     os.Getenv("SKIP_MIGRATIONS") == "true",
 	}
 }
 

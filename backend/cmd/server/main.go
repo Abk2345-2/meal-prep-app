@@ -31,8 +31,10 @@ func main() {
 		log.Fatalf("db: %v", err)
 	}
 	defer pool.Close()
-	if err := db.Migrate(ctx, pool); err != nil {
-		log.Fatalf("migrate: %v", err)
+	if !cfg.SkipMigrations {
+		if err := db.Migrate(ctx, pool); err != nil {
+			log.Fatalf("migrate: %v", err)
+		}
 	}
 
 	var provider recipeprovider.Provider
