@@ -27,10 +27,11 @@
         {
           "microphonePermission": "Allow PantryToPlate to use your microphone for voice grocery input."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "extra": {
-      "apiBaseUrl": "http://localhost:8080"
+      "apiBaseUrl": "https://backend-pantry-pilot.fly.dev"
     }
   }
 }
