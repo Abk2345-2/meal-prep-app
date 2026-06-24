@@ -8,8 +8,10 @@ import (
 	"sort"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
 
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
@@ -22,6 +24,9 @@ func Open(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 	}
 	cfg.MaxConns = 10
 	cfg.MaxConnIdleTime = 5 * time.Minute
+	// Supabase's transaction pooler (pgBouncer) doesn't support prepared
+	// statements — use simple protocol to avoid "prepared statement already exists".
+	cfg.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {

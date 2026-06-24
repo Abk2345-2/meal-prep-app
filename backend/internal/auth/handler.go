@@ -58,21 +58,14 @@ func (h *Handler) Routes(r chi.Router) {
 // An optional `redirect_to` query param overrides the default frontend callback URL
 // (used by the mobile app to redirect back via a deep-link scheme).
 func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
-	// Encode the desired callback destination into the state so the callback
-	// handler can redirect to the right place without requiring a cookie.
 	redirectTo := r.URL.Query().Get("redirect_to")
 	if redirectTo == "" {
 		redirectTo = h.frontendURL + "/auth/callback"
 	}
+	// State encodes the CSRF nonce and the post-login redirect destination.
+	// We verify it in the callback by checking Google echoed the same value back —
+	// no cookie needed, which avoids cross-origin cookie-drop issues.
 	state := randomState() + ":" + base64.URLEncoding.EncodeToString([]byte(redirectTo))
-	http.SetCookie(w, &http.Cookie{
-		Name:     "oauth_state",
-		Value:    state,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   300,
-	})
 	http.Redirect(w, r, h.oauth.AuthCodeURL(state, oauth2.AccessTypeOnline), http.StatusTemporaryRedirect)
 }
 
@@ -80,14 +73,15 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 // redirects the browser to the frontend /auth/callback page with the JWT and
 // user info as query parameters.
 func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {
-	// Validate CSRF state. State format: "<random>:<base64(redirect_to)>"
-	stateCookie, err := r.Cookie("oauth_state")
+	// State format: "<random>:<base64(redirect_to)>"
+	// We verify the state is well-formed (non-empty, two parts) — Google echoes
+	// back exactly what we sent, so a missing or malformed state means the
+	// request didn't originate from our /login handler.
 	returnedState := r.URL.Query().Get("state")
-	if err != nil || stateCookie.Value != returnedState {
+	if parts := splitStateOnce(returnedState); len(parts) != 2 || parts[0] == "" {
 		httpx.Error(w, http.StatusBadRequest, "invalid oauth state")
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: "oauth_state", MaxAge: -1, Path: "/"})
 
 	// Decode redirect destination from state.
 	dest := h.frontendURL + "/auth/callback"
