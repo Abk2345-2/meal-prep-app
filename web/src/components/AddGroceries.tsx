@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import { useGroqSpeech } from '@/lib/useGroqSpeech';
 import { formatGroceryTranscript } from '@/lib/groceryTranscript';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://backend-pantry-pilot.fly.dev';
 
 // AddGroceries is the single low-click entry point: type OR speak a sentence
 // like "2 lbs chicken, dozen eggs", see parsed chips instantly, tap once to save.
