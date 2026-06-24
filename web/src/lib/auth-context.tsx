@@ -25,6 +25,7 @@ interface AuthContextValue {
   loading: boolean;
   login: () => void;
   logout: () => void;
+  setSession: (token: string, user: AuthUser) => void;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -33,6 +34,7 @@ const AuthContext = createContext<AuthContextValue>({
   loading: true,
   login: () => {},
   logout: () => {},
+  setSession: () => {},
 });
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://backend-pantry-pilot.fly.dev';
@@ -108,6 +110,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const setSession = useCallback((t: string, u: AuthUser) => {
+    applyToken(t, u);
+  }, [applyToken]);
+
   const login = useCallback(() => {
     window.location.href = `${API_BASE}/api/auth/login`;
   }, []);
@@ -117,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [applyToken]);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout, setSession }}>
       {children}
     </AuthContext.Provider>
   );

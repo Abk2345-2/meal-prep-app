@@ -2,10 +2,12 @@
 
 import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 
 function CallbackHandler() {
   const router = useRouter();
   const params = useSearchParams();
+  const { setSession } = useAuth();
 
   useEffect(() => {
     const token  = params.get('token');
@@ -19,13 +21,11 @@ function CallbackHandler() {
       return;
     }
 
-    // Persist both token and user so AuthProvider can restore the session
-    // synchronously on the next page load — no loading flash, no redirect loop.
-    localStorage.setItem('ptp_token', token);
-    localStorage.setItem('ptp_user', JSON.stringify({ id, name, email, avatar }));
-
+    // Hydrate auth context directly so user state is set before we navigate.
+    // This prevents the home page seeing user=null and redirecting to /login.
+    setSession(token, { id, name, email, avatar });
     router.replace('/');
-  }, [params, router]);
+  }, [params, router, setSession]);
 
   return (
     <main className="flex min-h-screen items-center justify-center">

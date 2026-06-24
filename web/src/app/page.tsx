@@ -117,14 +117,17 @@ export default function Home() {
     [],
   );
 
+  // Wait for auth to resolve before fetching — ensures api.setToken() has been
+  // called with the real token, so pantry/nutrition data belongs to this user.
   useEffect(() => {
+    if (!user) return;
     (async () => {
       const pantry = await refreshPantry();
       await refreshRecipes(pantry, timeFilter.minTime, timeFilter.maxTime, selectedArea, selectedCategory);
       await refreshStats();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user?.id]);
 
   const onSaved = useCallback(async () => {
     const pantry = await refreshPantry();
