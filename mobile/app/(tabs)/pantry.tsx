@@ -110,8 +110,8 @@ export default function PantryScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={{ flexGrow: 0 }}
-            contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 6, paddingBottom: 8 }}
+            style={{ flexGrow: 0, flexShrink: 0 }}
+            contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 6, paddingTop: 4, paddingBottom: 8 }}
           >
             {visibleTabs.map((t) => {
               const active = activeTab === t.key;

@@ -66,7 +66,7 @@ export function useGroqSpeech() {
       }
 
       const audioBase64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: 'base64',
       });
 
       const res = await fetch(`${API_BASE}/api/pantry/transcribe`, {

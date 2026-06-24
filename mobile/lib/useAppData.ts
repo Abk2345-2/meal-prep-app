@@ -6,10 +6,12 @@ import type {
   TodayNutrition,
 } from '@pantrytoplate/shared';
 import { api } from './api';
+import { useAuth } from './auth-context';
 
 // useAppData centralizes the screens' shared state so the tabs stay in sync after
 // adding groceries, cooking a meal, or deleting an item.
 export function useAppData() {
+  const { user } = useAuth();
   const [items, setItems] = useState<PantryItem[]>([]);
   const [recipes, setRecipes] = useState<RecipeSuggestion[]>([]);
   const [recipesLoading, setRecipesLoading] = useState(false);
@@ -103,10 +105,12 @@ export function useAppData() {
     [refreshPantry, refreshRecipes],
   );
 
+  // Wait for auth to resolve before fetching — ensures api token is set
   useEffect(() => {
+    if (!user) return;
     refreshAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user?.id]);
 
   return {
     items,
