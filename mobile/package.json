@@ -4,7 +4,6 @@
   "private": true,
   "main": "./entry.js",
   "scripts": {
-    "postinstall": "node scripts/stub-undici.js",
     "start": "expo start",
     "ios": "expo start --ios",
     "android": "expo start --android",
