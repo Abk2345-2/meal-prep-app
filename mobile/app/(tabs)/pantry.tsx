@@ -110,7 +110,8 @@ export default function PantryScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 16, gap: 6, paddingBottom: 8 }}
+            style={{ flexGrow: 0 }}
+            contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 6, paddingBottom: 8 }}
           >
             {visibleTabs.map((t) => (
               <Pressable
@@ -121,6 +122,7 @@ export default function PantryScreen() {
                   borderRadius: 999,
                   paddingHorizontal: 14,
                   paddingVertical: 7,
+                  flexShrink: 0,
                 }}
               >
                 <Text style={{ fontSize: 13, fontWeight: '500', color: activeTab === t.key ? '#fff' : '#475569' }}>
