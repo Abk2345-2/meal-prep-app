@@ -22,10 +22,38 @@ config.transformer = {
   unstable_transformProfile: 'hermes-stable',
 };
 
-// Redirect Node.js-only packages to empty shims so they don't crash Hermes.
-// undici is a Node HTTP lib bundled inside expo that references browser globals.
+// Block Node.js-only packages that should never be bundled into a RN app.
+// undici is @expo/cli's HTTP client — it's a dev tool that gets accidentally
+// pulled into the bundle via dynamic require() calls.
+const BLOCKED_MODULES = new Set([
+  'undici',
+  'node:util',
+  'node:assert',
+  'node:stream',
+  'node:buffer',
+  'node:url',
+  'node:http',
+  'node:https',
+  'node:net',
+  'node:tls',
+  'node:crypto',
+  'node:path',
+  'node:fs',
+  'node:os',
+  'node:events',
+  'node:zlib',
+]);
+
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (moduleName === 'undici' || moduleName.startsWith('undici/')) {
+  // Block by exact name
+  if (BLOCKED_MODULES.has(moduleName)) {
+    return { type: 'empty' };
+  }
+  // Block undici by path (expo bundles its own copy)
+  if (
+    moduleName.startsWith('undici/') ||
+    moduleName.includes('/undici/')
+  ) {
     return { type: 'empty' };
   }
   return context.resolveRequest(context, moduleName, platform);
