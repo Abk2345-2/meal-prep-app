@@ -16,10 +16,19 @@ config.resolver.nodeModulesPaths = [
 ];
 
 // Use hermes-stable transform profile so Metro transpiles ES2022 private
-// fields (#foo) in node_modules down to something Hermes can actually parse.
+// fields (#foo) in node_modules down to something Hermes can parse.
 config.transformer = {
   ...config.transformer,
   unstable_transformProfile: 'hermes-stable',
+};
+
+// Redirect Node.js-only packages to empty shims so they don't crash Hermes.
+// undici is a Node HTTP lib bundled inside expo that references browser globals.
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === 'undici' || moduleName.startsWith('undici/')) {
+    return { type: 'empty' };
+  }
+  return context.resolveRequest(context, moduleName, platform);
 };
 
 module.exports = config;
