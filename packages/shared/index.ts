@@ -122,25 +122,25 @@ export function parseText(text: string): ParsedItem[] {
 // ── API client ──────────────────────────────────────────────────────────────
 
 export class ApiClient {
-  private base: string;
-  private token: string | null;
+  _base: string;
+  _token: string | null;
 
   constructor(options: { baseUrl: string; token?: string | null }) {
-    this.base = options.baseUrl.replace(/\/$/, '');
-    this.token = options.token ?? null;
+    this._base = options.baseUrl.replace(/\/$/, '');
+    this._token = options.token ?? null;
   }
 
   /** Replace the stored Bearer token (e.g. after login). */
   setToken(token: string | null) {
-    this.token = token;
+    this._token = token;
   }
 
-  private async json<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
+  async json<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
     const headers: Record<string, string> = {
       ...(init?.headers as Record<string, string>),
     };
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+    if (this._token) {
+      headers['Authorization'] = `Bearer ${this._token}`;
     }
     const res = await fetch(input, { ...init, headers });
     if (!res.ok) {
@@ -152,11 +152,11 @@ export class ApiClient {
 
   // Pantry
   async listPantry(): Promise<{ items: PantryItem[] }> {
-    return this.json(`${this.base}/api/pantry/items`);
+    return this.json(`${this._base}/api/pantry/items`);
   }
 
   async addGroceries(payload: { text: string }): Promise<void> {
-    await this.json(`${this.base}/api/pantry/items`, {
+    await this.json(`${this._base}/api/pantry/items`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -164,7 +164,7 @@ export class ApiClient {
   }
 
   async deletePantryItem(id: string): Promise<void> {
-    await fetch(`${this.base}/api/pantry/items/${id}`, { method: 'DELETE' });
+    await fetch(`${this._base}/api/pantry/items/${id}`, { method: 'DELETE' });
   }
 
   // Recipes
@@ -177,7 +177,7 @@ export class ApiClient {
     limit?: number;
     min_match?: number;
   }): Promise<{ recipes: RecipeSuggestion[] }> {
-    return this.json(`${this.base}/api/recipes/suggest`, {
+    return this.json(`${this._base}/api/recipes/suggest`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params),
@@ -185,7 +185,7 @@ export class ApiClient {
   }
 
   async getRecipe(id: string): Promise<RecipeSuggestion> {
-    return this.json(`${this.base}/api/recipes/${id}`);
+    return this.json(`${this._base}/api/recipes/${id}`);
   }
 
   async searchRecipes(params: {
@@ -205,12 +205,12 @@ export class ApiClient {
     if (params.max_time) qs.set('max_time', String(params.max_time));
     if (params.limit)    qs.set('limit', String(params.limit));
     if (params.offset)   qs.set('offset', String(params.offset));
-    return this.json(`${this.base}/api/recipes/search?${qs.toString()}`);
+    return this.json(`${this._base}/api/recipes/search?${qs.toString()}`);
   }
 
   // Nutrition
   async today(): Promise<TodayNutrition> {
-    return this.json(`${this.base}/api/nutrition/today`);
+    return this.json(`${this._base}/api/nutrition/today`);
   }
 
   async logMeal(payload: {
@@ -220,7 +220,7 @@ export class ApiClient {
     carbs_g: number;
     fat_g: number;
   }): Promise<void> {
-    await this.json(`${this.base}/api/nutrition/log`, {
+    await this.json(`${this._base}/api/nutrition/log`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -229,11 +229,11 @@ export class ApiClient {
 
   // Gamification
   async summary(): Promise<GamificationSummary> {
-    return this.json(`${this.base}/api/gamification/summary`);
+    return this.json(`${this._base}/api/gamification/summary`);
   }
 
   async sendEvent(action: string): Promise<void> {
-    await this.json(`${this.base}/api/gamification/event`, {
+    await this.json(`${this._base}/api/gamification/event`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action }),
@@ -241,7 +241,7 @@ export class ApiClient {
   }
 
   async story(): Promise<{ share_text: string; meals_cooked: number; current_streak: number; total_points: number }> {
-    return this.json(`${this.base}/api/gamification/story`);
+    return this.json(`${this._base}/api/gamification/story`);
   }
 
   async gamificationHistory(days = 30): Promise<{
@@ -250,16 +250,16 @@ export class ApiClient {
     total_points: number;
     rewards: Array<{ id: string; title: string; description: string; points_needed: number; unlocked: boolean }>;
   }> {
-    return this.json(`${this.base}/api/gamification/history?days=${days}`);
+    return this.json(`${this._base}/api/gamification/history?days=${days}`);
   }
 
   async deleteMealLog(id: string): Promise<{ today: { calories: number; protein_g: number; carbs_g: number; fat_g: number; meals: number } }> {
-    return this.json(`${this.base}/api/nutrition/log/${id}`, { method: 'DELETE' });
+    return this.json(`${this._base}/api/nutrition/log/${id}`, { method: 'DELETE' });
   }
 
   async nutritionHistory(days = 30): Promise<{
     history: Array<{ date: string; calories: number; meals: Array<{ id: string; source: string; calories: number; protein_g: number; carbs_g: number; fat_g: number; cooked_at: string }> }>;
   }> {
-    return this.json(`${this.base}/api/nutrition/history?days=${days}`);
+    return this.json(`${this._base}/api/nutrition/history?days=${days}`);
   }
 }
