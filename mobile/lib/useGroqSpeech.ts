@@ -1,6 +1,6 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
-  AudioRecorder,
+  useAudioRecorder,
   RecordingPresets,
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
@@ -15,16 +15,13 @@ const API_BASE =
 
 type Status = 'idle' | 'requesting' | 'recording' | 'transcribing' | 'error';
 
-/**
- * useGroqSpeech records audio with expo-audio and transcribes it via the
- * backend Groq Whisper endpoint (/api/pantry/transcribe).
- */
 export function useGroqSpeech() {
   const [status, setStatus] = useState<Status>('idle');
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const recorderRef = useRef<AudioRecorder | null>(null);
+  // SDK 54: useAudioRecorder hook manages the recorder instance lifecycle
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   const start = useCallback(async () => {
     setError(null);
@@ -44,26 +41,23 @@ export function useGroqSpeech() {
         playsInSilentMode: true,
       });
 
-      const recorder = new AudioRecorder(RecordingPresets.HIGH_QUALITY);
       await recorder.prepareToRecordAsync();
       recorder.record();
-      recorderRef.current = recorder;
       setStatus('recording');
     } catch (e) {
       setError((e as Error).message);
       setStatus('error');
     }
-  }, []);
+  }, [recorder]);
 
   const stop = useCallback(async () => {
-    const recorder = recorderRef.current;
-    if (!recorder) return;
+    if (status !== 'recording') return;
     setStatus('transcribing');
+
     try {
       await recorder.stop();
       await setAudioModeAsync({ allowsRecording: false });
       const uri = recorder.uri;
-      recorderRef.current = null;
 
       if (!uri) {
         setError('No audio recorded.');
@@ -71,8 +65,6 @@ export function useGroqSpeech() {
         return;
       }
 
-      // Read the recorded file as base64 using expo-file-system.
-      // FileReader is a Web API that doesn't exist in React Native/Hermes.
       const audioBase64 = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
@@ -95,7 +87,7 @@ export function useGroqSpeech() {
       setError((e as Error).message);
       setStatus('error');
     }
-  }, []);
+  }, [recorder, status]);
 
   const reset = useCallback(() => {
     setTranscript('');

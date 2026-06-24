@@ -138,7 +138,7 @@ export default function PantryScreen() {
           </ScrollView>
         )}
 
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24, gap: 10 }}>
           {items.length === 0 && (
             <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 32, alignItems: 'center' }}>
               <Text style={{ fontSize: 32 }}>🛒</Text>
