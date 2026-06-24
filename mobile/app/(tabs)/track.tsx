@@ -23,6 +23,10 @@ export default function TrackScreen() {
 
   const [calories, setCalories] = useState('');
   const [source, setSource] = useState('');
+  const [protein, setProtein] = useState('');
+  const [carbs, setCarbs] = useState('');
+  const [fat, setFat] = useState('');
+  const [showMacros, setShowMacros] = useState(false);
   const [logging, setLogging] = useState(false);
 
   // History state
@@ -54,21 +58,31 @@ export default function TrackScreen() {
     loadHistory();
   }, [loadHistory]);
 
-  async function logMeal() {
+  const logMeal = useCallback(async () => {
     const cal = parseInt(calories, 10);
-    if (!cal || cal <= 0) return;
+    if (!cal || cal <= 0 || logging) return;
     setLogging(true);
     try {
-      await api.logMeal({ source: source.trim() || 'Quick log', calories: cal, protein_g: 0, carbs_g: 0, fat_g: 0 });
+      await api.logMeal({
+        source: source.trim() || 'Quick log',
+        calories: cal,
+        protein_g: parseInt(protein, 10) || 0,
+        carbs_g: parseInt(carbs, 10) || 0,
+        fat_g: parseInt(fat, 10) || 0,
+      });
       await api.sendEvent('cook_meal');
       setCalories('');
       setSource('');
+      setProtein('');
+      setCarbs('');
+      setFat('');
+      setShowMacros(false);
       await refreshStats();
       loadHistory();
     } finally {
       setLogging(false);
     }
-  }
+  }, [calories, source, protein, carbs, fat, logging, refreshStats, loadHistory]);
 
   const removeMeal = useCallback(
     async (mealId: string) => {
@@ -180,6 +194,34 @@ export default function TrackScreen() {
             returnKeyType="done"
             onSubmitEditing={logMeal}
           />
+          {/* Collapsible macros */}
+          <Pressable onPress={() => setShowMacros(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={{ fontSize: 13, color: '#64748b' }}>{showMacros ? '▲' : '▼'} Add macros (optional)</Text>
+          </Pressable>
+          {showMacros && (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {([['Protein (g)', protein, setProtein], ['Carbs (g)', carbs, setCarbs], ['Fat (g)', fat, setFat]] as const).map(([label, val, setter]) => (
+                <TextInput
+                  key={label}
+                  value={val}
+                  onChangeText={setter}
+                  placeholder={label}
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="numeric"
+                  style={{
+                    flex: 1,
+                    borderWidth: 1,
+                    borderColor: '#e2e8f0',
+                    borderRadius: 10,
+                    paddingHorizontal: 10,
+                    paddingVertical: 8,
+                    fontSize: 13,
+                    color: '#0f172a',
+                  }}
+                />
+              ))}
+            </View>
+          )}
           <Pressable
             onPress={logMeal}
             disabled={logging || !calories}

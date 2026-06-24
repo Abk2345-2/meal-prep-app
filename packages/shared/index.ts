@@ -164,7 +164,7 @@ export class ApiClient {
   }
 
   async deletePantryItem(id: string): Promise<void> {
-    await fetch(`${this._base}/api/pantry/items/${id}`, { method: 'DELETE' });
+    await this.json(`${this._base}/api/pantry/items/${id}`, { method: 'DELETE' });
   }
 
   // Recipes

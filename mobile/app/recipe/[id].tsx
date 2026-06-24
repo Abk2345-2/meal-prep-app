@@ -88,7 +88,7 @@ export default function RecipeDetailScreen() {
   const hasMatchScore = typeof recipe.match_score === 'number' && !isNaN(recipe.match_score);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
         {/* Hero image */}
         <View style={{ position: 'relative' }}>
