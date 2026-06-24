@@ -10,7 +10,7 @@ import { api } from '../../lib/api';
 type Band = 'frozen' | 'fresh' | 'soon' | 'expired';
 
 const TABS = [
-  { key: 'all',     label: 'All' },
+  { key: 'all',     label: '🍽 All' },
   { key: 'meat',    label: '🥩 Meat' },
   { key: 'dairy',   label: '🥛 Dairy' },
   { key: 'veggies', label: '🥦 Veggies' },
@@ -113,23 +113,28 @@ export default function PantryScreen() {
             style={{ flexGrow: 0 }}
             contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 6, paddingBottom: 8 }}
           >
-            {visibleTabs.map((t) => (
-              <Pressable
-                key={t.key}
-                onPress={() => setActiveTab(t.key)}
-                style={{
-                  backgroundColor: activeTab === t.key ? brand : '#f1f5f9',
-                  borderRadius: 999,
-                  paddingHorizontal: 14,
-                  paddingVertical: 7,
-                  flexShrink: 0,
-                }}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '500', color: activeTab === t.key ? '#fff' : '#475569' }}>
-                  {t.label}
-                </Text>
-              </Pressable>
-            ))}
+            {visibleTabs.map((t) => {
+              const active = activeTab === t.key;
+              return (
+                <Pressable
+                  key={t.key}
+                  onPress={() => setActiveTab(t.key)}
+                  style={{
+                    backgroundColor: active ? brand : '#fff',
+                    borderRadius: 999,
+                    paddingHorizontal: 14,
+                    paddingVertical: 7,
+                    flexShrink: 0,
+                    borderWidth: 1.5,
+                    borderColor: active ? brand : '#e2e8f0',
+                  }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#fff' : '#475569' }}>
+                    {t.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </ScrollView>
         )}
 

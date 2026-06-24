@@ -5,6 +5,7 @@ import {
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
 } from 'expo-audio';
+import * as FileSystem from 'expo-file-system';
 import Constants from 'expo-constants';
 
 const API_BASE =
@@ -70,18 +71,10 @@ export function useGroqSpeech() {
         return;
       }
 
-      // Read the file as base64 via fetch + FileReader
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const audioBase64: string = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const result = reader.result as string;
-          // Strip "data:<mime>;base64," prefix
-          resolve(result.split(',')[1] ?? '');
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
+      // Read the recorded file as base64 using expo-file-system.
+      // FileReader is a Web API that doesn't exist in React Native/Hermes.
+      const audioBase64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
       });
 
       const res = await fetch(`${API_BASE}/api/pantry/transcribe`, {
