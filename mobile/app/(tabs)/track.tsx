@@ -19,7 +19,7 @@ type MealEntry = {
 type DayLog = { date: string; calories: number; meals: MealEntry[] };
 
 export default function TrackScreen() {
-  const { nutrition, loading, refreshStats } = useAppData();
+  const { nutrition, loading, refreshStats, optimisticAddMeal, optimisticRemoveMeal } = useAppData();
 
   const [calories, setCalories] = useState('');
   const [source, setSource] = useState('');
@@ -61,45 +61,50 @@ export default function TrackScreen() {
 
   const logMeal = useCallback(async () => {
     const cal = parseInt(calories, 10);
+    const p = parseInt(protein, 10) || 0;
+    const c = parseInt(carbs, 10) || 0;
+    const f = parseInt(fat, 10) || 0;
     if (!cal || cal <= 0 || loggingRef.current) return;
     loggingRef.current = true;
     setLogging(true);
+    // Optimistic update — show immediately
+    optimisticAddMeal(cal, p, c, f);
+    const src = source.trim() || 'Quick log';
+    setCalories('');
+    setSource('');
+    setProtein('');
+    setCarbs('');
+    setFat('');
+    setShowMacros(false);
     try {
-      await api.logMeal({
-        source: source.trim() || 'Quick log',
-        calories: cal,
-        protein_g: parseInt(protein, 10) || 0,
-        carbs_g: parseInt(carbs, 10) || 0,
-        fat_g: parseInt(fat, 10) || 0,
-      });
+      await api.logMeal({ source: src, calories: cal, protein_g: p, carbs_g: c, fat_g: f });
       await api.sendEvent('cook_meal');
-      setCalories('');
-      setSource('');
-      setProtein('');
-      setCarbs('');
-      setFat('');
-      setShowMacros(false);
-      await refreshStats();
-      loadHistory();
+      // Sync real data in background — don't await to keep UI snappy
+      refreshStats().then(() => loadHistory());
+    } catch {
+      // Revert optimistic update on failure
+      optimisticRemoveMeal(cal, p, c, f);
     } finally {
       loggingRef.current = false;
       setLogging(false);
     }
-  }, [calories, source, protein, carbs, fat, refreshStats, loadHistory]);
+  }, [calories, source, protein, carbs, fat, refreshStats, loadHistory, optimisticAddMeal, optimisticRemoveMeal]);
 
   const removeMeal = useCallback(
-    async (mealId: string) => {
+    async (mealId: string, cal = 0, p = 0, c = 0, f = 0) => {
       setRemoving(mealId);
+      optimisticRemoveMeal(cal, p, c, f);
       try {
         await api.deleteMealLog(mealId);
         await api.sendEvent('remove_meal');
-        await refreshStats();
-        loadHistory();
+        refreshStats().then(() => loadHistory());
+      } catch {
+        optimisticAddMeal(cal, p, c, f);
       } finally {
         setRemoving(null);
       }
     },
-    [refreshStats, loadHistory],
+    [refreshStats, loadHistory, optimisticAddMeal, optimisticRemoveMeal],
   );
 
   if (loading) return <TrackScreenSkeleton />;
@@ -277,7 +282,7 @@ export default function TrackScreen() {
                   </Text>
                 </View>
                 <Pressable
-                  onPress={() => removeMeal(m.id)}
+                  onPress={() => removeMeal(m.id, m.calories, m.protein_g, m.carbs_g, m.fat_g)}
                   disabled={removing === m.id}
                   style={{
                     marginLeft: 10,
@@ -387,7 +392,7 @@ export default function TrackScreen() {
                           </Text>
                         </View>
                         <Pressable
-                          onPress={() => removeMeal(m.id)}
+                          onPress={() => removeMeal(m.id, m.calories, m.protein_g, m.carbs_g, m.fat_g)}
                           disabled={removing === m.id}
                           style={{
                             marginLeft: 10,

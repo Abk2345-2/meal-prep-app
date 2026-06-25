@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   GamificationSummary,
   PantryItem,
@@ -27,6 +27,7 @@ export function useAppData() {
   const [game, setGame] = useState<GamificationSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const initialLoadDone = useRef(false);
 
   const refreshStats = useCallback(async () => {
     try {
@@ -36,6 +37,44 @@ export function useAppData() {
     } catch (e) {
       setError((e as Error).message);
     }
+  }, []);
+
+  // Immediately apply a meal to local nutrition state so the UI updates
+  // without waiting for the server round-trip.
+  const optimisticAddMeal = useCallback((cal: number, protein: number, carbs: number, fat: number) => {
+    setNutrition((prev) => {
+      if (!prev) return prev;
+      const totals = {
+        calories:  prev.totals.calories  + cal,
+        protein_g: prev.totals.protein_g + protein,
+        carbs_g:   prev.totals.carbs_g   + carbs,
+        fat_g:     prev.totals.fat_g     + fat,
+        meals:     prev.totals.meals     + 1,
+      };
+      return {
+        ...prev,
+        totals,
+        calories_remaining: Math.max(0, prev.goal.daily_calories - totals.calories),
+      };
+    });
+  }, []);
+
+  const optimisticRemoveMeal = useCallback((cal: number, protein: number, carbs: number, fat: number) => {
+    setNutrition((prev) => {
+      if (!prev) return prev;
+      const totals = {
+        calories:  Math.max(0, prev.totals.calories  - cal),
+        protein_g: Math.max(0, prev.totals.protein_g - protein),
+        carbs_g:   Math.max(0, prev.totals.carbs_g   - carbs),
+        fat_g:     Math.max(0, prev.totals.fat_g     - fat),
+        meals:     Math.max(0, prev.totals.meals     - 1),
+      };
+      return {
+        ...prev,
+        totals,
+        calories_remaining: Math.max(0, prev.goal.daily_calories - totals.calories),
+      };
+    });
   }, []);
 
   const refreshRecipes = useCallback(
@@ -85,7 +124,9 @@ export function useAppData() {
   }, []);
 
   const refreshAll = useCallback(async () => {
-    setLoading(true);
+    // Only show the skeleton on the very first load, not on mutations
+    const isFirst = !initialLoadDone.current;
+    if (isFirst) setLoading(true);
     try {
       const pantry = await refreshPantry();
       await Promise.all([
@@ -93,7 +134,10 @@ export function useAppData() {
         refreshStats(),
       ]);
     } finally {
-      setLoading(false);
+      if (isFirst) {
+        initialLoadDone.current = true;
+        setLoading(false);
+      }
     }
   }, [refreshPantry, refreshRecipes, refreshStats, minTime, maxTime, selectedArea, selectedCategory]);
 
@@ -135,5 +179,7 @@ export function useAppData() {
     refreshPantry,
     refreshStats,
     selectFilters,
+    optimisticAddMeal,
+    optimisticRemoveMeal,
   };
 }
