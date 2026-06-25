@@ -110,30 +110,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async () => {
-    // Use Linking.createURL so the deep link scheme is correct for both
-    // Expo Go (exp://) and standalone builds (pantrytoplate://).
+    // Linking.createURL produces the correct scheme for both Expo Go and
+    // standalone builds: exp://... in Go, pantrytoplate://... in production.
     const deepLink = Linking.createURL('auth/callback');
     const loginUrl = `${API_BASE}/api/auth/login?redirect_to=${encodeURIComponent(deepLink)}`;
 
-    // On Android, Chrome Custom Tabs doesn't auto-dismiss — we need to
-    // listen for the incoming deep link via Linking and dismiss manually.
     if (Platform.OS === 'android') {
-      const subscription = Linking.addEventListener('url', async (event) => {
-        subscription.remove();
-        await WebBrowser.dismissBrowser();
-        const url = new URL(event.url);
-        const t = url.searchParams.get('token');
-        const id = url.searchParams.get('id');
-        const name = url.searchParams.get('name');
-        const email = url.searchParams.get('email');
-        const avatar = url.searchParams.get('avatar');
-        if (t && id && name && email) {
-          await applyToken(t, { id, name, email, avatar: avatar ?? '' });
-        }
-      });
+      // Android: openBrowserAsync opens Chrome Custom Tabs. The backend
+      // redirects to pantrytoplate://auth/callback?token=... which Expo
+      // Router handles via app/auth/callback.tsx — no listener needed.
       await WebBrowser.openBrowserAsync(loginUrl);
     } else {
-      // iOS: ASWebAuthenticationSession handles the redirect automatically
+      // iOS: ASWebAuthenticationSession intercepts the redirect in-process.
       const result = await WebBrowser.openAuthSessionAsync(loginUrl, deepLink);
       if (result.type !== 'success') return;
       const url = new URL(result.url);

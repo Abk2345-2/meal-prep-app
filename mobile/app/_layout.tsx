@@ -31,6 +31,7 @@ function RouteGuard() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="login" />
+      <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
       <Stack.Screen
         name="recipe/[id]"
         options={{
