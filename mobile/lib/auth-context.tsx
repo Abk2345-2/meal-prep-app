@@ -1,6 +1,8 @@
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import {
   createContext,
   useCallback,
@@ -108,21 +110,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async () => {
-    // Pass deep-link as redirect_to so the backend callback redirects here
-    // instead of the web frontend URL.
-    const deepLink = 'pantrytoplate://auth/callback';
+    // Use Linking.createURL so the deep link scheme is correct for both
+    // Expo Go (exp://) and standalone builds (pantrytoplate://).
+    const deepLink = Linking.createURL('auth/callback');
     const loginUrl = `${API_BASE}/api/auth/login?redirect_to=${encodeURIComponent(deepLink)}`;
-    const result = await WebBrowser.openAuthSessionAsync(loginUrl, deepLink);
-    if (result.type !== 'success') return;
-    // Parse the redirect URL params
-    const url = new URL(result.url);
-    const t = url.searchParams.get('token');
-    const id = url.searchParams.get('id');
-    const name = url.searchParams.get('name');
-    const email = url.searchParams.get('email');
-    const avatar = url.searchParams.get('avatar');
-    if (t && id && name && email) {
-      await applyToken(t, { id, name, email, avatar: avatar ?? '' });
+
+    // On Android, Chrome Custom Tabs doesn't auto-dismiss — we need to
+    // listen for the incoming deep link via Linking and dismiss manually.
+    if (Platform.OS === 'android') {
+      const subscription = Linking.addEventListener('url', async (event) => {
+        subscription.remove();
+        await WebBrowser.dismissBrowser();
+        const url = new URL(event.url);
+        const t = url.searchParams.get('token');
+        const id = url.searchParams.get('id');
+        const name = url.searchParams.get('name');
+        const email = url.searchParams.get('email');
+        const avatar = url.searchParams.get('avatar');
+        if (t && id && name && email) {
+          await applyToken(t, { id, name, email, avatar: avatar ?? '' });
+        }
+      });
+      await WebBrowser.openBrowserAsync(loginUrl);
+    } else {
+      // iOS: ASWebAuthenticationSession handles the redirect automatically
+      const result = await WebBrowser.openAuthSessionAsync(loginUrl, deepLink);
+      if (result.type !== 'success') return;
+      const url = new URL(result.url);
+      const t = url.searchParams.get('token');
+      const id = url.searchParams.get('id');
+      const name = url.searchParams.get('name');
+      const email = url.searchParams.get('email');
+      const avatar = url.searchParams.get('avatar');
+      if (t && id && name && email) {
+        await applyToken(t, { id, name, email, avatar: avatar ?? '' });
+      }
     }
   }, [applyToken]);
 

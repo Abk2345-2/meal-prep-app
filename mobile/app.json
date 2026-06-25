@@ -12,7 +12,19 @@
       "bundleIdentifier": "com.pantrytoplate.app"
     },
     "android": {
-      "package": "com.pantrytoplate.app"
+      "package": "com.pantrytoplate.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "pantrytoplate"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "bundler": "metro"

@@ -1,9 +1,16 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
 import { AuthProvider, useAuth } from '../lib/auth-context';
 import { AppDataProvider } from '../lib/AppDataContext';
+
+// Warm up Chrome Custom Tabs on Android so OAuth opens instantly
+if (Platform.OS === 'android') {
+  WebBrowser.warmUpAsync();
+}
 
 function RouteGuard() {
   const { user, loading } = useAuth();
