@@ -4,12 +4,18 @@ import * as WebBrowser from 'expo-web-browser';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '../../lib/auth-context';
 
-// This screen handles the deep link pantrytoplate://auth/callback?token=...
-// on Android — Expo Router renders it when Chrome Custom Tabs redirects back.
+// Handles pantrytoplate://auth/callback?token=... in standalone builds.
+// In Expo Go on Android the auth-context Linking listener handles it instead.
 WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthCallbackScreen() {
-  const params = useLocalSearchParams<{ token: string; id: string; name: string; email: string; avatar?: string }>();
+  const params = useLocalSearchParams<{
+    token?: string;
+    id?: string;
+    name?: string;
+    email?: string;
+    avatar?: string;
+  }>();
   const { applyToken } = useAuth();
   const router = useRouter();
 
@@ -20,6 +26,7 @@ export default function AuthCallbackScreen() {
         router.replace('/(tabs)');
       });
     } else {
+      // No params — might be Expo Go where the Linking listener handled it already
       router.replace('/login');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

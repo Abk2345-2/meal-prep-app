@@ -110,28 +110,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async () => {
-    // Linking.createURL produces the correct scheme for both Expo Go and
-    // standalone builds: exp://... in Go, pantrytoplate://... in production.
+    // Linking.createURL gives exp://host:port/--/auth/callback in Expo Go
+    // and pantrytoplate://auth/callback in a standalone build.
     const deepLink = Linking.createURL('auth/callback');
     const loginUrl = `${API_BASE}/api/auth/login?redirect_to=${encodeURIComponent(deepLink)}`;
 
+    function parseTokenFromUrl(rawUrl: string) {
+      try {
+        // Handle both standard URLs and exp:// deep links
+        const url = new URL(rawUrl);
+        return {
+          t:      url.searchParams.get('token'),
+          id:     url.searchParams.get('id'),
+          name:   url.searchParams.get('name'),
+          email:  url.searchParams.get('email'),
+          avatar: url.searchParams.get('avatar') ?? '',
+        };
+      } catch {
+        return null;
+      }
+    }
+
     if (Platform.OS === 'android') {
-      // Android: openBrowserAsync opens Chrome Custom Tabs. The backend
-      // redirects to pantrytoplate://auth/callback?token=... which Expo
-      // Router handles via app/auth/callback.tsx — no listener needed.
-      await WebBrowser.openBrowserAsync(loginUrl);
+      // Android: use Linking listener to catch the redirect — Expo Router
+      // can't reliably handle exp:// deep links from Chrome Custom Tabs.
+      await new Promise<void>((resolve) => {
+        const sub = Linking.addEventListener('url', async (event) => {
+          sub.remove();
+          await WebBrowser.dismissBrowser();
+          const parsed = parseTokenFromUrl(event.url);
+          if (parsed?.t && parsed.id && parsed.name && parsed.email) {
+            await applyToken(parsed.t, {
+              id: parsed.id,
+              name: parsed.name,
+              email: parsed.email,
+              avatar: parsed.avatar,
+            });
+          }
+          resolve();
+        });
+        WebBrowser.openBrowserAsync(loginUrl).then((result) => {
+          // If the browser was dismissed without a redirect (user cancelled)
+          if (result.type === 'cancel' || result.type === 'dismiss') {
+            sub.remove();
+            resolve();
+          }
+        });
+      });
     } else {
       // iOS: ASWebAuthenticationSession intercepts the redirect in-process.
       const result = await WebBrowser.openAuthSessionAsync(loginUrl, deepLink);
       if (result.type !== 'success') return;
-      const url = new URL(result.url);
-      const t = url.searchParams.get('token');
-      const id = url.searchParams.get('id');
-      const name = url.searchParams.get('name');
-      const email = url.searchParams.get('email');
-      const avatar = url.searchParams.get('avatar');
-      if (t && id && name && email) {
-        await applyToken(t, { id, name, email, avatar: avatar ?? '' });
+      const parsed = parseTokenFromUrl(result.url);
+      if (parsed?.t && parsed.id && parsed.name && parsed.email) {
+        await applyToken(parsed.t, {
+          id: parsed.id,
+          name: parsed.name,
+          email: parsed.email,
+          avatar: parsed.avatar,
+        });
       }
     }
   }, [applyToken]);
