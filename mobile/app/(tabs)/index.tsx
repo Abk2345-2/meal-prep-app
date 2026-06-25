@@ -323,7 +323,12 @@ export default function CookScreen() {
               {preview.map((item, i) => (
                 <View key={i} style={chipStyle}>
                   <Text style={{ fontSize: 13, color: '#475569' }}>
-                    {item.quantity}{item.unit !== 'unit' ? ` ${item.unit}` : ''} {item.name}
+                    {item.name}
+                    {(item.quantity !== 1 || item.unit !== 'unit') ? (
+                      <Text style={{ color: '#94a3b8' }}>
+                        {`  ·  ${item.quantity}${item.unit !== 'unit' ? ' ' + item.unit : ''}`}
+                      </Text>
+                    ) : null}
                   </Text>
                 </View>
               ))}

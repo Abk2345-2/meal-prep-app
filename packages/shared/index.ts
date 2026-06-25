@@ -98,23 +98,36 @@ export interface GamificationSummary {
 export function parseText(text: string): ParsedItem[] {
   const items: ParsedItem[] = [];
   const parts = text.split(/,\s*|\s+and\s+/i).filter(Boolean);
+  const UNITS = 'kg|g|lbs?|oz|dozen|cups?|tbsp|tsp|ml|l|piece|pieces|clove|cloves|can|cans|pack|packs|bunch|bunches|head|heads|bottle|bottles|jar|jars|box|boxes|bag|bags';
+  // quantity-first: "2kg potato" or "2 kg potato"
+  const qFirst = new RegExp(`^(\\d+(?:\\.\\d+)?)\\s*(${UNITS})?\\s+(.+)$`, 'i');
+  // name-first: "potato 2kg" or "potato 2 kg"
+  const nFirst = new RegExp(`^(.+?)\\s+(\\d+(?:\\.\\d+)?)\\s*(${UNITS})$`, 'i');
 
   for (const part of parts) {
     const trimmed = part.trim();
     if (!trimmed) continue;
 
-    const match = trimmed.match(/^(\d+(?:\.\d+)?)\s*(kg|g|lbs?|oz|dozen)?\s+(.+)$/i);
-    if (match) {
-      let qty = parseFloat(match[1]);
-      let unit = (match[2] || 'unit').toLowerCase();
-      let name = match[3].trim();
-      if (unit === 'dozen') { qty *= 12; unit = 'unit'; }
-      name = name.charAt(0).toUpperCase() + name.slice(1);
-      items.push({ name, quantity: qty, unit });
+    let qty = 1, unit = 'unit', name = '';
+
+    const mQ = trimmed.match(qFirst);
+    const mN = trimmed.match(nFirst);
+
+    if (mQ) {
+      qty = parseFloat(mQ[1]);
+      unit = (mQ[2] || 'unit').toLowerCase();
+      name = mQ[3].trim();
+    } else if (mN) {
+      name = mN[1].trim();
+      qty = parseFloat(mN[2]);
+      unit = (mN[3] || 'unit').toLowerCase();
     } else {
-      const name = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
-      items.push({ name, quantity: 1, unit: 'unit' });
+      name = trimmed;
     }
+
+    if (unit === 'dozen') { qty *= 12; unit = 'unit'; }
+    name = name.charAt(0).toUpperCase() + name.slice(1);
+    items.push({ name, quantity: qty, unit });
   }
   return items;
 }
@@ -211,6 +224,18 @@ export class ApiClient {
   // Nutrition
   async today(): Promise<TodayNutrition> {
     return this.json(`${this._base}/api/nutrition/today`);
+  }
+
+  async getGoal(): Promise<NutritionGoal> {
+    return this.json(`${this._base}/api/nutrition/goal`);
+  }
+
+  async setGoal(goal: Omit<NutritionGoal, 'user_id'>): Promise<NutritionGoal> {
+    return this.json(`${this._base}/api/nutrition/goal`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(goal),
+    });
   }
 
   async logMeal(payload: {

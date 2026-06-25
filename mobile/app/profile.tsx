@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../lib/auth-context';
 import { api } from '../lib/api';
+
+const brand = '#16a34a';
 
 type MealEntry = {
   id: string;
@@ -25,17 +27,51 @@ export default function ProfileScreen() {
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
 
+  // Nutrition goals
+  const [goalCal, setGoalCal] = useState('2000');
+  const [goalProtein, setGoalProtein] = useState('100');
+  const [goalCarbs, setGoalCarbs] = useState('250');
+  const [goalFat, setGoalFat] = useState('65');
+  const [savingGoal, setSavingGoal] = useState(false);
+  const savingRef = useRef(false);
+
   const load = useCallback(() => {
     setLoading(true);
-    api
-      .nutritionHistory(30)
-      .then((d) => setHistory(d.history))
-      .finally(() => setLoading(false));
+    Promise.all([
+      api.nutritionHistory(30),
+      api.getGoal(),
+    ]).then(([hist, goal]) => {
+      setHistory(hist.history);
+      setGoalCal(String(goal.daily_calories));
+      setGoalProtein(String(goal.protein_g));
+      setGoalCarbs(String(goal.carbs_g));
+      setGoalFat(String(goal.fat_g));
+    }).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const saveGoal = useCallback(async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSavingGoal(true);
+    try {
+      await api.setGoal({
+        daily_calories: parseInt(goalCal, 10) || 2000,
+        protein_g: parseInt(goalProtein, 10) || 100,
+        carbs_g: parseInt(goalCarbs, 10) || 250,
+        fat_g: parseInt(goalFat, 10) || 65,
+      });
+      Alert.alert('Saved', 'Your daily nutrition goals have been updated.');
+    } catch {
+      Alert.alert('Error', 'Could not save goals. Please try again.');
+    } finally {
+      savingRef.current = false;
+      setSavingGoal(false);
+    }
+  }, [goalCal, goalProtein, goalCarbs, goalFat]);
 
   const removeMeal = useCallback(
     async (mealId: string) => {
@@ -152,6 +188,50 @@ export default function ProfileScreen() {
                 <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>{label}</Text>
               </View>
             ))}
+          </View>
+        </View>
+
+        {/* Daily nutrition goals */}
+        <View style={{ padding: 16, paddingBottom: 0 }}>
+          <View style={{
+            backgroundColor: '#fff', borderRadius: 16, padding: 16,
+            shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
+          }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#0f172a', marginBottom: 14 }}>
+              🎯 Daily nutrition goals
+            </Text>
+            {[
+              { label: 'Calories',   value: goalCal,     setter: setGoalCal,     unit: 'kcal', kb: 'numeric' },
+              { label: 'Protein',    value: goalProtein, setter: setGoalProtein, unit: 'g',    kb: 'numeric' },
+              { label: 'Carbs',      value: goalCarbs,   setter: setGoalCarbs,   unit: 'g',    kb: 'numeric' },
+              { label: 'Fat',        value: goalFat,     setter: setGoalFat,     unit: 'g',    kb: 'numeric' },
+            ].map(({ label, value, setter, unit }) => (
+              <View key={label} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                <Text style={{ width: 80, fontSize: 14, color: '#475569', fontWeight: '500' }}>{label}</Text>
+                <TextInput
+                  value={value}
+                  onChangeText={setter}
+                  keyboardType="numeric"
+                  style={{
+                    flex: 1, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10,
+                    paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, color: '#0f172a',
+                  }}
+                />
+                <Text style={{ width: 36, fontSize: 13, color: '#94a3b8', textAlign: 'right' }}>{unit}</Text>
+              </View>
+            ))}
+            <Pressable
+              onPress={saveGoal}
+              disabled={savingGoal}
+              style={{
+                backgroundColor: savingGoal ? '#dcfce7' : brand,
+                borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginTop: 4,
+              }}
+            >
+              <Text style={{ color: savingGoal ? '#166534' : '#fff', fontWeight: '600', fontSize: 15 }}>
+                {savingGoal ? 'Saving…' : 'Save goals'}
+              </Text>
+            </Pressable>
           </View>
         </View>
 

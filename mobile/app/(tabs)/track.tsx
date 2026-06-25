@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppData } from '../../lib/useAppData';
@@ -28,6 +28,7 @@ export default function TrackScreen() {
   const [fat, setFat] = useState('');
   const [showMacros, setShowMacros] = useState(false);
   const [logging, setLogging] = useState(false);
+  const loggingRef = useRef(false);
 
   // History state
   const [history, setHistory] = useState<DayLog[]>([]);
@@ -60,7 +61,8 @@ export default function TrackScreen() {
 
   const logMeal = useCallback(async () => {
     const cal = parseInt(calories, 10);
-    if (!cal || cal <= 0 || logging) return;
+    if (!cal || cal <= 0 || loggingRef.current) return;
+    loggingRef.current = true;
     setLogging(true);
     try {
       await api.logMeal({
@@ -80,9 +82,10 @@ export default function TrackScreen() {
       await refreshStats();
       loadHistory();
     } finally {
+      loggingRef.current = false;
       setLogging(false);
     }
-  }, [calories, source, protein, carbs, fat, logging, refreshStats, loadHistory]);
+  }, [calories, source, protein, carbs, fat, refreshStats, loadHistory]);
 
   const removeMeal = useCallback(
     async (mealId: string) => {
