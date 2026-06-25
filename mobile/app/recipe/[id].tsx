@@ -186,15 +186,26 @@ export default function RecipeDetailScreen() {
                   key={i}
                   style={{
                     flexDirection: 'row',
+                    alignItems: 'flex-start',
                     justifyContent: 'space-between',
                     paddingVertical: 8,
                     paddingHorizontal: 12,
                     backgroundColor: i % 2 === 0 ? '#f8fafc' : '#fff',
                     borderRadius: 8,
+                    gap: 8,
                   }}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: '500', color: '#0f172a', flex: 1 }}>{ing.name}</Text>
-                  <Text style={{ fontSize: 14, color: '#64748b' }}>{ing.measure}</Text>
+                  <Text
+                    style={{ fontSize: 14, fontWeight: '500', color: '#0f172a', flex: 1, flexWrap: 'wrap' }}
+                    numberOfLines={2}
+                  >
+                    {ing.name}
+                  </Text>
+                  <Text
+                    style={{ fontSize: 14, color: '#64748b', flexShrink: 0, textAlign: 'right', maxWidth: '45%', flexWrap: 'wrap' }}
+                  >
+                    {ing.measure}
+                  </Text>
                 </View>
               ))}
             </View>
