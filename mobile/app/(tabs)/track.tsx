@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAppData } from '../../lib/useAppData';
+import { useSharedAppData as useAppData } from '../../lib/AppDataContext';
 import { api } from '../../lib/api';
 import { TrackScreenSkeleton } from '../../components/LoadingScreen';
 
@@ -92,6 +92,7 @@ export default function TrackScreen() {
       setRemoving(mealId);
       try {
         await api.deleteMealLog(mealId);
+        await api.sendEvent('remove_meal');
         await refreshStats();
         loadHistory();
       } finally {

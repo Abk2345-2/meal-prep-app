@@ -16,6 +16,7 @@ import (
 var pointsForAction = map[string]int{
 	"log_pantry":        5,  // once/day habit check-in
 	"cook_meal":         20, // core action — cooking from pantry
+	"remove_meal":      -20, // reversal when a meal log is deleted
 	"hit_goal":          30, // daily calorie goal reached
 	"avoid_waste":       50, // cooked expiring ingredient
 	"share":             15,
@@ -68,7 +69,7 @@ func (s *Store) Award(ctx context.Context, userID, action string) (int, error) {
 		}
 	}
 
-	if pts > 0 {
+	if pts != 0 {
 		_, err := s.pool.Exec(ctx, `
 			INSERT INTO gamification.points_ledger (id, user_id, action, points)
 			VALUES ($1,$2,$3,$4)`, uuid.NewString(), userID, action, pts)

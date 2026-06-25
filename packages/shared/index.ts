@@ -160,6 +160,10 @@ export class ApiClient {
       const text = await res.text();
       throw new Error(`${res.status} ${res.statusText}: ${text}`);
     }
+    // 204 No Content — nothing to parse
+    if (res.status === 204 || res.headers.get('content-length') === '0') {
+      return undefined as unknown as T;
+    }
     return res.json() as Promise<T>;
   }
 

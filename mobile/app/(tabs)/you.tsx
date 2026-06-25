@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Share, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useAppData } from '../../lib/useAppData';
+import { useSharedAppData as useAppData } from '../../lib/AppDataContext';
 import { api } from '../../lib/api';
 import { YouScreenSkeleton } from '../../components/LoadingScreen';
 

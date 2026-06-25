@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { parseText } from '@pantrytoplate/shared';
 import type { RecipeSuggestion } from '@pantrytoplate/shared';
-import { useAppData } from '../../lib/useAppData';
+import { useSharedAppData as useAppData } from '../../lib/AppDataContext';
 import { useAuth } from '../../lib/auth-context';
 import { api } from '../../lib/api';
 import { useGroqSpeech } from '../../lib/useGroqSpeech';

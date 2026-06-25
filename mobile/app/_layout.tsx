@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../lib/auth-context';
+import { AppDataProvider } from '../lib/AppDataContext';
 
 function RouteGuard() {
   const { user, loading } = useAuth();
@@ -46,7 +47,9 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <StatusBar style="dark" />
       <AuthProvider>
-        <RouteGuard />
+        <AppDataProvider>
+          <RouteGuard />
+        </AppDataProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
