@@ -234,6 +234,13 @@ export function RecipeStrip({
   const searchRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Draft state inside the drawer — declared here so useEffect below can reference selectedDietary
+  const [draftTime, setDraftTime] = useState(selectedTime);
+  const [draftArea, setDraftArea] = useState(selectedArea);
+  const [draftCategory, setDraftCategory] = useState(selectedCategory);
+  const [selectedDietary, setSelectedDietary] = useState('');
+  const [draftDietary, setDraftDietary] = useState('');
+
   // Debounced search — fires 400ms after the user stops typing
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -270,13 +277,6 @@ export function RecipeStrip({
     setSearchResults([]);
     searchRef.current?.focus();
   }
-
-  // Draft state inside the drawer — only committed on Apply
-  const [draftTime, setDraftTime] = useState(selectedTime);
-  const [draftArea, setDraftArea] = useState(selectedArea);
-  const [draftCategory, setDraftCategory] = useState(selectedCategory);
-  const [selectedDietary, setSelectedDietary] = useState('');
-  const [draftDietary, setDraftDietary] = useState('');
 
   function openDrawer() {
     // Sync draft with current applied values
