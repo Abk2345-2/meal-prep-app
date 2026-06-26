@@ -20,6 +20,7 @@ import (
 	"github.com/pantrytoplate/backend/internal/pantry"
 	"github.com/pantrytoplate/backend/internal/recipe"
 	"github.com/pantrytoplate/backend/internal/recipeprovider"
+	"github.com/pantrytoplate/backend/internal/waitlist"
 )
 
 func main() {
@@ -73,6 +74,7 @@ func main() {
 	translateH := recipe.NewTranslateHandler(pool, cfg.GoogleTranslateAPIKey)
 	nutritionH := nutrition.NewHandler(nutrition.NewStore(pool))
 	gamificationH := gamification.NewHandler(gamification.NewStore(pool))
+	waitlistH := waitlist.NewHandler(pool)
 	authH := auth.NewHandler(auth.NewStore(pool), jwtSecret,
 		cfg.GoogleClientID, cfg.GoogleClientSecret, cfg.GoogleCallbackURL, cfg.FrontendURL)
 
@@ -87,6 +89,9 @@ func main() {
 	}))
 
 	r.Get("/healthz", httpx.Health("server"))
+
+	// Public waitlist endpoint — no auth required.
+	r.Post("/api/waitlist", waitlistH.Join)
 
 	// Auth routes don't require an existing session.
 	r.Route("/api/auth", func(r chi.Router) {
