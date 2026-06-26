@@ -7,7 +7,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://backend-pantry
 type State = 'idle' | 'loading' | 'success' | 'error' | 'duplicate';
 
 const FEATURES = [
-  { emoji: '🥦', text: 'Tell it what's in your kitchen — it finds the recipe' },
+  { emoji: '🥦', text: "Tell it what's in your kitchen — it finds the recipe" },
   { emoji: '🎙️', text: 'Add groceries by voice in Hindi, Tamil, Bengali + 19 more languages' },
   { emoji: '📊', text: 'Track calories and hit your nutrition goals daily' },
   { emoji: '♻️', text: 'Never waste food again — alerts before things expire' },
