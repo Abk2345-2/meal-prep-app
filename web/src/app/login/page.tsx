@@ -7,23 +7,49 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-lg text-center space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">PantryPilot</h1>
-          <p className="mt-1 text-sm text-gray-500">Cook smarter, waste less.</p>
+      <div className="flex w-full max-w-3xl flex-col gap-8 md:flex-row md:items-center">
+        {/* Features section - left on md+ */}
+        <div className="flex-1 space-y-6 text-center md:text-left">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">PantryPilot</h1>
+            <p className="mt-2 text-base text-gray-500">Cook smarter, waste less.</p>
+          </div>
+          <ul className="space-y-4">
+            <li className="flex items-center gap-3 md:justify-start justify-center">
+              <span className="text-2xl">🥦</span>
+              <span className="text-base text-gray-700">Track your pantry &amp; reduce food waste</span>
+            </li>
+            <li className="flex items-center gap-3 md:justify-start justify-center">
+              <span className="text-2xl">🍳</span>
+              <span className="text-base text-gray-700">Get recipes matched to what you have</span>
+            </li>
+            <li className="flex items-center gap-3 md:justify-start justify-center">
+              <span className="text-2xl">📊</span>
+              <span className="text-base text-gray-700">Log nutrition and hit your daily goals</span>
+            </li>
+            <li className="flex items-center gap-3 md:justify-start justify-center">
+              <span className="text-2xl">🔥</span>
+              <span className="text-base text-gray-700">Build streaks and earn rewards</span>
+            </li>
+          </ul>
         </div>
 
-        <button
-          onClick={login}
-          className="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95"
-        >
-          <GoogleIcon />
-          Continue with Google
-        </button>
+        {/* Sign-in card - right on md+ */}
+        <div className="w-full max-w-sm mx-auto md:mx-0 rounded-2xl bg-white p-8 shadow-lg text-center space-y-6">
+          <p className="text-sm font-semibold text-gray-700">Sign in to get started</p>
 
-        <p className="text-xs text-gray-400">
-          By continuing you agree to our terms of service.
-        </p>
+          <button
+            onClick={login}
+            className="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95"
+          >
+            <GoogleIcon />
+            Continue with Google
+          </button>
+
+          <p className="text-xs text-gray-400">
+            By continuing you agree to our terms of service.
+          </p>
+        </div>
       </div>
     </main>
   );

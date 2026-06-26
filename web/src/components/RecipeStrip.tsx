@@ -33,11 +33,20 @@ const CATEGORY_OPTIONS = [
   { value: 'drink',     label: '🥤 Drink' },
 ];
 
-function activeFilterCount(area: string, category: string, timeValue: number) {
+const DIETARY_OPTIONS = [
+  { value: '',             label: 'All' },
+  { value: 'vegetarian',   label: '🥗 Veg' },
+  { value: 'vegan',        label: '🌱 Vegan' },
+  { value: 'high-protein', label: '💪 High Protein' },
+  { value: 'low-carb',     label: '🥬 Low Carb' },
+];
+
+function activeFilterCount(area: string, category: string, timeValue: number, dietary: string) {
   let n = 0;
   if (area) n++;
   if (category) n++;
   if (timeValue !== 15) n++; // 15 is the default tab
+  if (dietary) n++;
   return n;
 }
 
@@ -50,9 +59,11 @@ function FilterDrawer({
   draftTime,
   draftArea,
   draftCategory,
+  draftDietary,
   onDraftTime,
   onDraftArea,
   onDraftCategory,
+  onDraftDietary,
   onApply,
   onReset,
 }: {
@@ -61,9 +72,11 @@ function FilterDrawer({
   draftTime: number;
   draftArea: string;
   draftCategory: string;
+  draftDietary: string;
   onDraftTime: (v: number) => void;
   onDraftArea: (v: string) => void;
   onDraftCategory: (v: string) => void;
+  onDraftDietary: (v: string) => void;
   onApply: () => void;
   onReset: () => void;
 }) {
@@ -92,6 +105,26 @@ function FilterDrawer({
             >
               Reset all
             </button>
+          </div>
+
+          {/* ── Dietary ───────────────────────────────────────────── */}
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Dietary
+          </p>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {DIETARY_OPTIONS.map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => onDraftDietary(value)}
+                className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                  draftDietary === value
+                    ? 'border-brand bg-brand text-white'
+                    : 'border-slate-200 bg-white text-slate-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
           {/* ── Cuisine type ──────────────────────────────────────── */}
@@ -195,6 +228,9 @@ export function RecipeStrip({
   const [searchResults, setSearchResults] = useState<RecipeSuggestion[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchMode, setSearchMode] = useState(false); // true = showing search results
+  const [searchOffset, setSearchOffset] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [canLoadMore, setCanLoadMore] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -205,22 +241,28 @@ export function RecipeStrip({
     if (!q) {
       setSearchMode(false);
       setSearchResults([]);
+      setSearchOffset(0);
+      setCanLoadMore(false);
       return;
     }
     setSearchMode(true);
     setSearching(true);
+    setSearchOffset(0);
+    setCanLoadMore(false);
     debounceRef.current = setTimeout(async () => {
       try {
-        const { recipes } = await api.searchRecipes({ q, limit: 20 });
+        const { recipes } = await api.searchRecipes({ q, limit: 20, dietary: selectedDietary || undefined });
         setSearchResults(recipes);
+        setCanLoadMore(recipes.length === 20);
       } catch {
         setSearchResults([]);
+        setCanLoadMore(false);
       } finally {
         setSearching(false);
       }
     }, 400);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [searchQuery]);
+  }, [searchQuery, selectedDietary]);
 
   function clearSearch() {
     setSearchQuery('');
@@ -233,12 +275,15 @@ export function RecipeStrip({
   const [draftTime, setDraftTime] = useState(selectedTime);
   const [draftArea, setDraftArea] = useState(selectedArea);
   const [draftCategory, setDraftCategory] = useState(selectedCategory);
+  const [selectedDietary, setSelectedDietary] = useState('');
+  const [draftDietary, setDraftDietary] = useState('');
 
   function openDrawer() {
     // Sync draft with current applied values
     setDraftTime(selectedTime);
     setDraftArea(selectedArea);
     setDraftCategory(selectedCategory);
+    setDraftDietary(selectedDietary);
     setDrawerOpen(true);
   }
 
@@ -247,6 +292,7 @@ export function RecipeStrip({
     onSelectTime(opt.value, opt.minTime, opt.maxTime);
     onSelectArea(draftArea);
     onSelectCategory(draftCategory);
+    setSelectedDietary(draftDietary);
     setDrawerOpen(false);
   }
 
@@ -254,9 +300,10 @@ export function RecipeStrip({
     setDraftTime(15);
     setDraftArea('');
     setDraftCategory('');
+    setDraftDietary('');
   }
 
-  const badgeCount = activeFilterCount(selectedArea, selectedCategory, selectedTime);
+  const badgeCount = activeFilterCount(selectedArea, selectedCategory, selectedTime, selectedDietary);
 
   // Build a compact active-filter summary to show under the header
   const activeLabels: string[] = [];
@@ -362,6 +409,37 @@ export function RecipeStrip({
             <RecipeCard key={r.id} recipe={r} onCooked={onCooked} />
           ))}
         </div>
+
+        {searchMode && canLoadMore && !searching && !loadingMore && (
+          <button
+            onClick={async () => {
+              setLoadingMore(true);
+              try {
+                const q = searchQuery.trim();
+                const { recipes: more } = await api.searchRecipes({
+                  q,
+                  limit: 20,
+                  offset: searchOffset + 20,
+                  dietary: selectedDietary || undefined,
+                });
+                setSearchResults((prev) => [...prev, ...more]);
+                setCanLoadMore(more.length === 20);
+                setSearchOffset((prev) => prev + 20);
+              } catch {
+                // keep existing results
+              } finally {
+                setLoadingMore(false);
+              }
+            }}
+            className="mt-3 w-full rounded-xl border border-brand bg-green-50 py-2.5 text-sm font-semibold text-brand transition hover:bg-green-100"
+          >
+            Load more
+          </button>
+        )}
+
+        {loadingMore && (
+          <p className="mt-3 text-center text-sm text-slate-400">Loading more…</p>
+        )}
       </section>
 
       <FilterDrawer
@@ -370,9 +448,11 @@ export function RecipeStrip({
         draftTime={draftTime}
         draftArea={draftArea}
         draftCategory={draftCategory}
+        draftDietary={draftDietary}
         onDraftTime={setDraftTime}
         onDraftArea={setDraftArea}
         onDraftCategory={setDraftCategory}
+        onDraftDietary={setDraftDietary}
         onApply={apply}
         onReset={reset}
       />

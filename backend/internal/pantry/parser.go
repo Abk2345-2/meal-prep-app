@@ -51,12 +51,39 @@ var unitAliases = map[string]string{
 // shelfLife maps a normalized ingredient name to its typical fridge/pantry life
 // in days, used to auto-suggest an expiry date. Falls back to a category default.
 var shelfLife = map[string]int{
+	// Meat & seafood
 	"chicken": 3, "beef": 4, "pork": 4, "fish": 2, "salmon": 2, "shrimp": 2,
-	"milk": 7, "yogurt": 14, "cheese": 21, "eggs": 28, "egg": 28, "butter": 30,
+	"mutton": 3, "lamb": 3, "goat": 3, "keema": 2, "kheema": 2,
+	"prawn": 2, "prawns": 2, "crab": 2, "hilsa": 2, "rohu": 2, "mackerel": 2,
+	// Dairy
+	"milk": 7, "yogurt": 14, "curd": 7, "dahi": 7, "paneer": 7,
+	"cheese": 21, "eggs": 28, "egg": 28, "butter": 30, "ghee": 180,
+	"cream": 7, "khoya": 7, "mawa": 7,
+	// Produce
 	"broccoli": 5, "spinach": 5, "lettuce": 6, "tomato": 6, "tomatoes": 6,
-	"carrot": 21, "carrots": 21, "onion": 30, "onions": 30, "potato": 30, "potatoes": 30,
+	"carrot": 21, "carrots": 21, "onion": 30, "onions": 30,
+	"potato": 30, "potatoes": 30, "aloo": 30,
+	"capsicum": 7, "shimla mirch": 7, "okra": 5, "bhindi": 5,
+	"eggplant": 7, "brinjal": 7, "baingan": 7,
+	"cauliflower": 7, "gobi": 7, "cabbage": 14, "patra": 5,
+	"cucumber": 7, "peas": 5, "beans": 7, "corn": 3,
 	"apple": 21, "apples": 21, "banana": 5, "bananas": 5,
-	"rice": 365, "pasta": 365, "flour": 240, "bread": 5, "sugar": 365,
+	"mango": 5, "mangoes": 5, "papaya": 5, "guava": 5,
+	"lemon": 21, "lime": 21, "orange": 14, "pomegranate": 14,
+	"ginger": 30, "garlic": 30, "green chili": 14, "chili": 14,
+	"coriander": 7, "mint": 5, "curry leaves": 7, "methi": 5,
+	// Grains & pantry
+	"rice": 365, "pasta": 365, "flour": 240, "maida": 240, "atta": 180,
+	"bread": 5, "roti": 1, "chapati": 1,
+	"sugar": 365, "jaggery": 365, "salt": 3650,
+	"dal": 365, "lentil": 365, "lentils": 365, "chana": 365,
+	"moong": 365, "masoor": 365, "urad": 365, "toor": 365,
+	"oil": 365, "coconut oil": 365,
+	// Spices (long shelf life)
+	"turmeric": 365, "cumin": 365, "coriander powder": 365,
+	"red chili powder": 365, "garam masala": 365, "masala": 365,
+	"cardamom": 365, "cloves": 365, "cinnamon": 365, "pepper": 365,
+	"coffee": 180, "tea": 365, "chai": 365,
 }
 
 // categoryShelfLife is the fallback shelf life when the item is unknown.

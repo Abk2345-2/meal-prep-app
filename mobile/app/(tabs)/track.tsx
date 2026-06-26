@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useSharedAppData as useAppData } from '../../lib/AppDataContext';
 import { api } from '../../lib/api';
 import { TrackScreenSkeleton } from '../../components/LoadingScreen';
@@ -20,6 +21,7 @@ type DayLog = { date: string; calories: number; meals: MealEntry[] };
 
 export default function TrackScreen() {
   const { nutrition, loading, refreshStats, optimisticAddMeal, optimisticRemoveMeal } = useAppData();
+  const router = useRouter();
 
   const [calories, setCalories] = useState('');
   const [source, setSource] = useState('');
@@ -276,7 +278,13 @@ export default function TrackScreen() {
                 }}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, color: '#334155' }}>{m.source}</Text>
+                  {/^[a-zA-Z0-9]+$/.test(m.source) ? (
+                    <Pressable onPress={() => router.push('/recipe/' + m.source)}>
+                      <Text style={{ fontSize: 14, color: '#16a34a', textDecorationLine: 'underline' }}>{m.source}</Text>
+                    </Pressable>
+                  ) : (
+                    <Text style={{ fontSize: 14, color: '#334155' }}>{m.source}</Text>
+                  )}
                   <Text style={{ fontSize: 12, color: '#94a3b8' }}>
                     {m.calories} cal · P {m.protein_g}g · C {m.carbs_g}g · F {m.fat_g}g
                   </Text>
@@ -379,9 +387,13 @@ export default function TrackScreen() {
                         }}
                       >
                         <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 14, fontWeight: '500', color: '#0f172a' }} numberOfLines={1}>
-                            {m.source}
-                          </Text>
+                          {/^[a-zA-Z0-9]+$/.test(m.source) ? (
+                            <Pressable onPress={() => router.push('/recipe/' + m.source)}>
+                              <Text style={{ fontSize: 14, fontWeight: '500', color: '#16a34a', textDecorationLine: 'underline' }} numberOfLines={1}>{m.source}</Text>
+                            </Pressable>
+                          ) : (
+                            <Text style={{ fontSize: 14, fontWeight: '500', color: '#0f172a' }} numberOfLines={1}>{m.source}</Text>
+                          )}
                           <Text style={{ fontSize: 12, color: '#94a3b8' }}>
                             {m.calories} cal · P {m.protein_g}g · C {m.carbs_g}g · F {m.fat_g}g
                             {'  ·  '}

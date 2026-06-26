@@ -48,6 +48,7 @@ type SuggestParams struct {
 	Category    string   // filter by course/category substring, e.g. "breakfast", "dessert"
 	MinMatch    float64  // minimum match score, default 0.2
 	Limit       int      // max results, default 8
+	Dietary     string   // dietary filter: "vegetarian", "vegan", "high-protein", "low-carb"; "" = all
 }
 
 // SearchParams controls the freetext search endpoint.
@@ -59,6 +60,7 @@ type SearchParams struct {
 	MinTime  int    // 0 = no lower bound
 	Limit    int    // default 20
 	Offset   int    // for pagination
+	Dietary  string // dietary filter: "vegetarian", "vegan", "high-protein", "low-carb"; "" = all
 }
 
 // Suggest fetches candidate recipes (seeded by the user's ingredients), scores
@@ -114,6 +116,9 @@ func (s *Service) Suggest(ctx context.Context, p SuggestParams) ([]Suggestion, e
 			if categoryFilter != "" && !wordMatch(c.Category, categoryFilter) {
 				continue
 			}
+			if !matchesDietary(c, p.Dietary) {
+				continue
+			}
 			ranked = append(ranked, scored{
 				stub: c,
 				sg: Suggestion{
@@ -139,6 +144,9 @@ func (s *Service) Suggest(ctx context.Context, p SuggestParams) ([]Suggestion, e
 				continue
 			}
 			if categoryFilter != "" && !wordMatch(full.Category, categoryFilter) {
+				continue
+			}
+			if !matchesDietary(full, p.Dietary) {
 				continue
 			}
 			sg := score(full, owned)
@@ -178,6 +186,9 @@ func (s *Service) Suggest(ctx context.Context, p SuggestParams) ([]Suggestion, e
 			}
 			sg := r.sg
 			sg.Recipe = full
+			if !matchesDietary(full, p.Dietary) {
+				continue
+			}
 			suggestions = append(suggestions, sg)
 		} else {
 			suggestions = append(suggestions, r.sg)
@@ -245,6 +256,9 @@ func (s *Service) Search(ctx context.Context, p SearchParams) ([]SearchResult, e
 				continue
 			}
 		}
+		if !matchesDietary(r, p.Dietary) {
+			continue
+		}
 		results = append(results, SearchResult{
 			Recipe:              r,
 			MatchScore:          0,
@@ -300,6 +314,45 @@ func ownsIngredient(owned map[string]bool, recipeIngredient string) bool {
 		}
 	}
 	return false
+}
+
+var meatKeywords = []string{"chicken", "beef", "pork", "fish", "lamb", "shrimp", "prawn", "mutton"}
+var dairyKeywords = []string{"milk", "butter", "ghee", "cheese", "paneer", "curd", "egg", "cream"}
+
+func matchesDietary(r recipeprovider.Recipe, dietary string) bool {
+	if dietary == "" {
+		return true
+	}
+	switch dietary {
+	case "vegetarian":
+		for _, ing := range r.Ingredients {
+			name := strings.ToLower(ing.Name)
+			for _, kw := range meatKeywords {
+				if strings.Contains(name, kw) {
+					return false
+				}
+			}
+		}
+	case "vegan":
+		exclude := append(meatKeywords, dairyKeywords...)
+		for _, ing := range r.Ingredients {
+			name := strings.ToLower(ing.Name)
+			for _, kw := range exclude {
+				if strings.Contains(name, kw) {
+					return false
+				}
+			}
+		}
+	case "high-protein":
+		if r.Protein < 20 {
+			return false
+		}
+	case "low-carb":
+		if r.Carbs > 30 {
+			return false
+		}
+	}
+	return true
 }
 
 func toSet(items []string) map[string]bool {

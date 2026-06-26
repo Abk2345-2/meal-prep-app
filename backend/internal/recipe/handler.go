@@ -29,6 +29,7 @@ type suggestRequest struct {
 	Category    string   `json:"category"`
 	MinMatch    float64  `json:"min_match"`
 	Limit       int      `json:"limit"`
+	Dietary     string   `json:"dietary"`
 }
 
 func (h *Handler) suggest(w http.ResponseWriter, r *http.Request) {
@@ -48,6 +49,7 @@ func (h *Handler) suggest(w http.ResponseWriter, r *http.Request) {
 		Category:    req.Category,
 		MinMatch:    req.MinMatch,
 		Limit:       req.Limit,
+		Dietary:     req.Dietary,
 	})
 	if err != nil {
 		httpx.Error(w, http.StatusBadGateway, err.Error())
@@ -75,6 +77,9 @@ func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 	}
 	if v, err := strconv.Atoi(q.Get("offset")); err == nil && v >= 0 {
 		p.Offset = v
+	}
+	if v := q.Get("dietary"); v != "" {
+		p.Dietary = v
 	}
 	results, err := h.svc.Search(r.Context(), p)
 	if err != nil {

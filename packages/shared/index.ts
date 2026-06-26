@@ -191,6 +191,7 @@ export class ApiClient {
     max_time?: number;
     area?: string;
     category?: string;
+    dietary?: string;
     limit?: number;
     min_match?: number;
   }): Promise<{ recipes: RecipeSuggestion[] }> {
@@ -209,6 +210,7 @@ export class ApiClient {
     q?: string;
     area?: string;
     category?: string;
+    dietary?: string;
     min_time?: number;
     max_time?: number;
     limit?: number;
@@ -218,6 +220,7 @@ export class ApiClient {
     if (params.q)        qs.set('q', params.q);
     if (params.area)     qs.set('area', params.area);
     if (params.category) qs.set('category', params.category);
+    if (params.dietary)  qs.set('dietary', params.dietary);
     if (params.min_time) qs.set('min_time', String(params.min_time));
     if (params.max_time) qs.set('max_time', String(params.max_time));
     if (params.limit)    qs.set('limit', String(params.limit));

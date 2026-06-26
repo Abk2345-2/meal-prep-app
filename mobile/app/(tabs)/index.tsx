@@ -53,6 +53,14 @@ const CATEGORY_OPTIONS = [
   { value: 'drink',     label: '🥤 Drink' },
 ];
 
+const DIETARY_OPTIONS = [
+  { value: '',             label: 'All' },
+  { value: 'vegetarian',   label: '🥗 Veg' },
+  { value: 'vegan',        label: '🌱 Vegan' },
+  { value: 'high-protein', label: '💪 High Protein' },
+  { value: 'low-carb',     label: '🥬 Low Carb' },
+];
+
 // ── CookScreen ────────────────────────────────────────────────────────────────
 
 export default function CookScreen() {
@@ -116,6 +124,9 @@ export default function CookScreen() {
   const [searchResults, setSearchResults] = useState<RecipeSuggestion[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchMode, setSearchMode] = useState(false);
+  const [searchOffset, setSearchOffset] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [canLoadMore, setCanLoadMore] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -124,22 +135,28 @@ export default function CookScreen() {
     if (!q) {
       setSearchMode(false);
       setSearchResults([]);
+      setSearchOffset(0);
+      setCanLoadMore(false);
       return;
     }
     setSearchMode(true);
     setSearching(true);
+    setSearchOffset(0);
+    setCanLoadMore(false);
     debounceRef.current = setTimeout(async () => {
       try {
-        const { recipes } = await api.searchRecipes({ q, limit: 20 });
+        const { recipes } = await api.searchRecipes({ q, limit: 20, dietary: selectedDietary || undefined });
         setSearchResults(recipes);
+        setCanLoadMore(recipes.length === 20);
       } catch {
         setSearchResults([]);
+        setCanLoadMore(false);
       } finally {
         setSearching(false);
       }
     }, 400);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [searchQuery]);
+  }, [searchQuery, selectedDietary]);
 
   const clearSearch = () => {
     setSearchQuery('');
@@ -152,17 +169,21 @@ export default function CookScreen() {
   const [draftTime, setDraftTime] = useState(selectedTime);
   const [draftArea, setDraftArea] = useState(selectedArea);
   const [draftCategory, setDraftCategory] = useState(selectedCategory);
+  const [selectedDietary, setSelectedDietary] = useState('');
+  const [draftDietary, setDraftDietary] = useState('');
 
   const openFilter = () => {
     setDraftTime(selectedTime);
     setDraftArea(selectedArea);
     setDraftCategory(selectedCategory);
+    setDraftDietary(selectedDietary);
     setFilterOpen(true);
   };
 
   const applyFilter = () => {
     const opt = TIME_OPTIONS.find((t) => t.value === draftTime) ?? TIME_OPTIONS[1];
     selectFilters(opt.value, opt.minTime, opt.maxTime, draftArea, draftCategory);
+    setSelectedDietary(draftDietary);
     setFilterOpen(false);
   };
 
@@ -170,12 +191,14 @@ export default function CookScreen() {
     setDraftTime(15);
     setDraftArea('');
     setDraftCategory('');
+    setDraftDietary('');
   };
 
   const activeFilterCount =
     (selectedArea ? 1 : 0) +
     (selectedCategory ? 1 : 0) +
-    (selectedTime !== 15 ? 1 : 0);
+    (selectedTime !== 15 ? 1 : 0) +
+    (selectedDietary ? 1 : 0);
 
   // ── share story ──────────────────────────────────────────────────────────
   const [sharing, setSharing] = useState(false);
@@ -428,6 +451,45 @@ export default function CookScreen() {
               />
             ))}
           </ScrollView>
+
+          {searchMode && canLoadMore && !searching && !loadingMore && (
+            <Pressable
+              onPress={async () => {
+                setLoadingMore(true);
+                try {
+                  const q = searchQuery.trim();
+                  const { recipes: more } = await api.searchRecipes({
+                    q,
+                    limit: 20,
+                    offset: searchOffset + 20,
+                    dietary: selectedDietary || undefined,
+                  });
+                  setSearchResults((prev) => [...prev, ...more]);
+                  setCanLoadMore(more.length === 20);
+                  setSearchOffset((prev) => prev + 20);
+                } catch {
+                  /* ignore */
+                } finally {
+                  setLoadingMore(false);
+                }
+              }}
+              style={[
+                btnStyle,
+                {
+                  backgroundColor: '#f0fdf4',
+                  borderWidth: 1,
+                  borderColor: brand,
+                  marginTop: 12,
+                },
+              ]}
+            >
+              <Text style={{ color: brand, fontWeight: '600', fontSize: 15 }}>Load more</Text>
+            </Pressable>
+          )}
+
+          {searchMode && loadingMore && (
+            <ActivityIndicator color={brand} style={{ paddingVertical: 12 }} />
+          )}
         </View>
 
         {/* Pantry count badge */}
@@ -464,6 +526,24 @@ export default function CookScreen() {
             <Pressable onPress={resetFilter}>
               <Text style={{ fontSize: 13, color: brand, fontWeight: '600' }}>Reset all</Text>
             </Pressable>
+          </View>
+
+          {/* Dietary */}
+          <View>
+            <Text style={drawerLabelStyle}>Dietary</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {DIETARY_OPTIONS.map((o) => (
+                  <Pressable
+                    key={o.value}
+                    onPress={() => setDraftDietary(o.value)}
+                    style={[filterChipStyle, draftDietary === o.value && { backgroundColor: brand, borderColor: brand }]}
+                  >
+                    <Text style={[filterChipText, draftDietary === o.value && { color: '#fff' }]}>{o.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
           </View>
 
           {/* Cuisine */}

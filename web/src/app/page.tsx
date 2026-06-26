@@ -217,6 +217,33 @@ export default function Home() {
         onSelectCategory={onSelectCategory}
         onCooked={refreshStats}
       />
+      {/* Today's meals */}
+      {(nutrition?.meals?.length ?? 0) > 0 && (
+        <section className="rounded-2xl bg-white p-4 shadow-sm">
+          <h2 className="mb-3 text-base font-semibold">Today&apos;s meals</h2>
+          <div className="divide-y divide-slate-100">
+            {nutrition!.meals.map((m) => (
+              <div key={m.id} className="flex items-center justify-between py-2">
+                <div className="min-w-0 flex-1">
+                  {/^[a-zA-Z0-9]+$/.test(m.source) ? (
+                    <a
+                      href={`/recipe/${m.source}`}
+                      className="text-sm font-medium text-brand hover:underline"
+                    >
+                      {m.source}
+                    </a>
+                  ) : (
+                    <p className="text-sm font-medium text-slate-700">{m.source}</p>
+                  )}
+                  <p className="text-xs text-slate-400">
+                    {m.calories} cal · P {m.protein_g}g · C {m.carbs_g}g · F {m.fat_g}g
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       <PantrySummary items={items} onDelete={onDelete} />
 
       {error && (
