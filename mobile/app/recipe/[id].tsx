@@ -37,6 +37,10 @@ export default function RecipeDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [cooking, setCooking] = useState(false);
   const [cooked, setCooked] = useState(false);
+  const { lang } = useLang();
+  const [translatedSteps, setTranslatedSteps] = useState<string[] | null>(null);
+  const [translating, setTranslating] = useState(false);
+  const currentLang = LANGUAGES.find(l => l.code === lang);
 
   useEffect(() => {
     api
@@ -64,6 +68,19 @@ export default function RecipeDetailScreen() {
     }
   }, [recipe, cooked]);
 
+  const translateRecipe = useCallback(async () => {
+    if (lang === 'en' || !recipe?.id) return;
+    setTranslating(true);
+    try {
+      const res = await api.translateRecipe(recipe.id, lang);
+      setTranslatedSteps(parseSteps(res.instructions));
+    } catch {
+      // silently fail — keep original text
+    } finally {
+      setTranslating(false);
+    }
+  }, [lang, recipe?.id]);
+
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc', justifyContent: 'center', alignItems: 'center' }}>
@@ -84,26 +101,6 @@ export default function RecipeDetailScreen() {
       </SafeAreaView>
     );
   }
-
-  const { lang } = useLang();
-  const [translatedSteps, setTranslatedSteps] = useState<string[] | null>(null);
-  const [translating, setTranslating] = useState(false);
-  const steps = translatedSteps ?? parseSteps(recipe.instructions);
-  const hasMatchScore = typeof recipe.match_score === 'number' && !isNaN(recipe.match_score);
-  const currentLang = LANGUAGES.find(l => l.code === lang);
-
-  const translateRecipe = useCallback(async () => {
-    if (lang === 'en' || !recipe.id) return;
-    setTranslating(true);
-    try {
-      const res = await api.translateRecipe(recipe.id, lang);
-      setTranslatedSteps(parseSteps(res.instructions));
-    } catch {
-      // silently fail — keep original text
-    } finally {
-      setTranslating(false);
-    }
-  }, [lang, recipe.id]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }} edges={['top', 'bottom']}>
