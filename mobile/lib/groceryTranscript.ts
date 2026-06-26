@@ -1,58 +1,111 @@
-const UNITS = 'kg|kgs|g|grams|gram|lb|lbs|pound|pounds|oz|ounce|ounces|cup|cups|tsp|tbsp|teaspoon|tablespoon|litre|liter|ml|l|dozen|half|bunch|bunches|packet|packets|pack|packs|piece|pieces|head|heads|clove|cloves|can|cans|bottle|bottles|jar|jars|box|boxes|bag|bags';
+/**
+ * formatGroceryTranscript — turns a Whisper voice transcript into a
+ * comma-separated grocery string that the Go backend ParseText can handle.
+ *
+ * Supported input patterns (all case-insensitive):
+ *   "potato"                     → "potato"
+ *   "two kg potato"              → "2 kg potato"
+ *   "potato two kg"              → "potato 2 kg"
+ *   "half kg onion"              → "0.5 kg onion"
+ *   "3 eggs"                     → "3 eggs"
+ *   "a dozen eggs"               → "12 eggs"
+ *   "potato 2kg and rice 300g"   → "potato 2kg, rice 300g"
+ *   "milk, bread, and 2 eggs"    → "milk, bread, 2 eggs"
+ *   "doodh ek litre"             → "doodh 1 litre"   (Hindi numerals)
+ *   "ek kilo aata"               → "1 kilo aata"
+ */
 
 const WORD_TO_NUM: Record<string, number> = {
-  zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5,
+  // English
+  zero: 0, a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5,
   six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
   eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15,
   sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20,
-  thirty: 30, forty: 40, fifty: 50, hundred: 100, thousand: 1000,
-  half: 0.5, quarter: 0.25, dozen: 12,
+  thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90,
+  hundred: 100, thousand: 1000,
+  half: 0.5, quarter: 0.25, dozen: 12, couple: 2, few: 3,
+  // Hindi
+  ek: 1, do: 2, teen: 3, char: 4, paanch: 5, chhe: 6, saat: 7, aath: 8, nau: 9, das: 10,
+  aadha: 0.5,
+  // Common aliases
+  'a dozen': 12, 'half a': 0.5,
 };
 
+const UNIT_ALIASES: Record<string, string> = {
+  // Weight
+  kg: 'kg', kgs: 'kg', kilo: 'kg', kilos: 'kg', kilogram: 'kg', kilograms: 'kg',
+  g: 'g', gram: 'g', grams: 'g', grm: 'g',
+  lb: 'lb', lbs: 'lb', pound: 'lb', pounds: 'lb',
+  oz: 'oz', ounce: 'oz', ounces: 'oz',
+  // Volume
+  l: 'l', liter: 'l', liters: 'l', litre: 'l', litres: 'l',
+  ml: 'ml', milliliter: 'ml', milliliters: 'ml',
+  cup: 'cup', cups: 'cup',
+  tbsp: 'tbsp', tablespoon: 'tbsp', tablespoons: 'tbsp',
+  tsp: 'tsp', teaspoon: 'tsp', teaspoons: 'tsp',
+  // Count
+  dozen: 'dozen', dozens: 'dozen',
+  piece: 'unit', pieces: 'unit', pcs: 'unit',
+  head: 'head', heads: 'head',
+  clove: 'clove', cloves: 'clove',
+  bunch: 'bunch', bunches: 'bunch',
+  pack: 'pack', packs: 'pack', packet: 'pack', packets: 'pack',
+  can: 'can', cans: 'can', tin: 'can', tins: 'can',
+  bottle: 'bottle', bottles: 'bottle',
+  jar: 'jar', jars: 'jar',
+  box: 'box', boxes: 'box',
+  bag: 'bag', bags: 'bag',
+  // Hindi units
+  kilo: 'kg', litre: 'l', graam: 'g',
+};
+
+const UNIT_PATTERN = Object.keys(UNIT_ALIASES).join('|');
+const NUM_WORDS = Object.keys(WORD_TO_NUM)
+  .filter(k => k.length > 1 || k === 'a') // skip single-char 'g' etc
+  .sort((a, b) => b.length - a.length) // longest first for greedy match
+  .map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  .join('|');
+
 function wordsToDigits(text: string): string {
-  // Replace standalone number words followed by a unit or nothing
+  // Replace word numbers (longest match first)
   return text.replace(
-    /\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|hundred|thousand|half|quarter|dozen)\b/gi,
+    new RegExp(`\\b(${NUM_WORDS})\\b`, 'gi'),
     (word) => {
       const n = WORD_TO_NUM[word.toLowerCase()];
       return n !== undefined ? String(n) : word;
-    }
+    },
   );
 }
 
-const NAME_QTY_UNIT = new RegExp(`([a-zA-Z][a-zA-Z\\s]*)\\s+(\\d+(?:\\.\\d+)?)\\s*(${UNITS})\\b`, 'gi');
+function normalizeUnits(text: string): string {
+  return text.replace(
+    new RegExp(`\\b(${UNIT_PATTERN})\\b`, 'gi'),
+    (unit) => UNIT_ALIASES[unit.toLowerCase()] ?? unit,
+  );
+}
 
-/**
- * formatGroceryTranscript normalises a Whisper transcript into a
- * comma-separated grocery list the parser can handle.
- *
- * Handles:
- *   "potato two kg"     → "potato 2 kg"  → "potato 2kg"
- *   "potato 2kg rice 300g" → "potato 2kg, rice 300g"
- *   "chicken and eggs"  → "chicken, eggs"
- */
 export function formatGroceryTranscript(raw: string): string {
   if (!raw.trim()) return '';
 
   let text = raw.replace(/\s+/g, ' ').trim();
 
-  // Convert spoken number words to digits first
+  // 1. Convert number words → digits
   text = wordsToDigits(text);
 
-  // Replace spoken connectors with commas
+  // 2. Normalize unit words → canonical forms
+  text = normalizeUnits(text);
+
+  // 3. Split on spoken connectors and punctuation
+  //    Keep "and" only as a separator, not when it's part of a name
   text = text.replace(/\s*(?:,|;)\s*/g, ', ');
-  text = text.replace(/\s+(?:and|plus|also|then|with)\s+/gi, ', ');
+  // "and" / "plus" / "also" used as item separators
+  text = text.replace(/\s+(?:and|plus|also|then)\s+(?=\d|[A-Z])/gi, ', ');
+  // Simple "and" between two items where the next item doesn't start with a digit
+  text = text.replace(/\s+and\s+/gi, ', ');
 
-  // Protect "name qty unit" groups so we don't split them
-  // e.g. "potato 2 kg" → "potato__2__kg"
-  text = text.replace(NAME_QTY_UNIT, (_, name, qty, unit) => {
-    return `${name.trim()}__${qty}__${unit}`;
-  });
+  // 4. Clean up
+  text = text.replace(/\s+/g, ' ').trim();
 
-  // Restore protected groups (collapse any remaining spaces in the token)
-  text = text.replace(/(\w)__(\d)/g, '$1 $2');
-  text = text.replace(/(\d)__(\w)/g, '$1 $2');
-
-  const parts = text.split(',').map((p) => p.trim()).filter(Boolean);
+  const parts = text.split(',').map(p => p.trim()).filter(Boolean);
   return parts.join(', ');
 }

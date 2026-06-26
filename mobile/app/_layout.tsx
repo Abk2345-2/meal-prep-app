@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import { AuthProvider, useAuth } from '../lib/auth-context';
 import { AppDataProvider } from '../lib/AppDataContext';
+import { LanguageProvider } from '../lib/LanguageContext';
 
 // Warm up Chrome Custom Tabs on Android so OAuth opens instantly
 if (Platform.OS === 'android') {
@@ -55,9 +56,11 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <StatusBar style="dark" />
       <AuthProvider>
-        <AppDataProvider>
-          <RouteGuard />
-        </AppDataProvider>
+        <LanguageProvider>
+          <AppDataProvider>
+            <RouteGuard />
+          </AppDataProvider>
+        </LanguageProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

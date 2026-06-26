@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { RecipeSuggestion } from '@pantrytoplate/shared';
 import { api } from '../../lib/api';
+import { useLang, LANGUAGES } from '../../lib/LanguageContext';
 
 const brand = '#16a34a';
 
@@ -84,8 +85,29 @@ export default function RecipeDetailScreen() {
     );
   }
 
-  const steps = parseSteps(recipe.instructions);
+  const { lang } = useLang();
+  const [translatedSteps, setTranslatedSteps] = useState<string[] | null>(null);
+  const [translating, setTranslating] = useState(false);
+  const steps = translatedSteps ?? parseSteps(recipe.instructions);
   const hasMatchScore = typeof recipe.match_score === 'number' && !isNaN(recipe.match_score);
+  const currentLang = LANGUAGES.find(l => l.code === lang);
+
+  const translateRecipe = useCallback(async () => {
+    if (lang === 'en' || !recipe.instructions) return;
+    setTranslating(true);
+    try {
+      // Use Google Translate public endpoint (no key needed for short texts)
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${lang}&dt=t&q=${encodeURIComponent(recipe.instructions)}`;
+      const res = await fetch(url);
+      const json = await res.json();
+      const translated = json[0].map((part: [string]) => part[0]).join('');
+      setTranslatedSteps(parseSteps(translated));
+    } catch {
+      // silently fail — keep original text
+    } finally {
+      setTranslating(false);
+    }
+  }, [lang, recipe.instructions]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }} edges={['top', 'bottom']}>
@@ -214,9 +236,26 @@ export default function RecipeDetailScreen() {
           {/* Steps */}
           {steps.length > 0 && (
             <View>
-              <Text style={{ fontSize: 17, fontWeight: '700', color: '#0f172a', marginBottom: 8 }}>
-                👨‍🍳 Instructions
-              </Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={{ fontSize: 17, fontWeight: '700', color: '#0f172a' }}>
+                  👨‍🍳 Instructions
+                </Text>
+                {lang !== 'en' && (
+                  <Pressable
+                    onPress={translatedSteps ? () => setTranslatedSteps(null) : translateRecipe}
+                    disabled={translating}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#f0fdf4', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 }}
+                  >
+                    {translating ? (
+                      <ActivityIndicator size="small" color={brand} />
+                    ) : (
+                      <Text style={{ fontSize: 12, color: brand, fontWeight: '600' }}>
+                        🌐 {translatedSteps ? 'Show English' : `Translate to ${currentLang?.nativeName ?? lang}`}
+                      </Text>
+                    )}
+                  </Pressable>
+                )}
+              </View>
               {steps.map((step, i) => (
                 <View key={i} style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
                   <View

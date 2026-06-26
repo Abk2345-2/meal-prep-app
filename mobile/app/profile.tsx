@@ -3,6 +3,7 @@ import { Alert, Image, Pressable, ScrollView, Text, TextInput, View } from 'reac
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../lib/auth-context';
+import { useLang, LANGUAGES } from '../lib/LanguageContext';
 import { api } from '../lib/api';
 
 const brand = '#16a34a';
@@ -21,6 +22,7 @@ type DayLog = { date: string; calories: number; meals: MealEntry[] };
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { lang, setLang } = useLang();
 
   const [history, setHistory] = useState<DayLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -188,6 +190,36 @@ export default function ProfileScreen() {
                 <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>{label}</Text>
               </View>
             ))}
+          </View>
+        </View>
+
+        {/* Language selector */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+          <View style={{
+            backgroundColor: '#fff', borderRadius: 16, padding: 16,
+            shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
+          }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#0f172a', marginBottom: 12 }}>
+              🌐 Language / भाषा
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {LANGUAGES.map((l) => (
+                <Pressable
+                  key={l.code}
+                  onPress={() => setLang(l.code)}
+                  style={{
+                    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,
+                    backgroundColor: lang === l.code ? brand : '#f1f5f9',
+                    borderWidth: 1.5,
+                    borderColor: lang === l.code ? brand : '#e2e8f0',
+                  }}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: lang === l.code ? '#fff' : '#475569' }}>
+                    {l.nativeName}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
         </View>
 
