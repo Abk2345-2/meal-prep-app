@@ -93,21 +93,17 @@ export default function RecipeDetailScreen() {
   const currentLang = LANGUAGES.find(l => l.code === lang);
 
   const translateRecipe = useCallback(async () => {
-    if (lang === 'en' || !recipe.instructions) return;
+    if (lang === 'en' || !recipe.id) return;
     setTranslating(true);
     try {
-      // Use Google Translate public endpoint (no key needed for short texts)
-      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${lang}&dt=t&q=${encodeURIComponent(recipe.instructions)}`;
-      const res = await fetch(url);
-      const json = await res.json();
-      const translated = json[0].map((part: [string]) => part[0]).join('');
-      setTranslatedSteps(parseSteps(translated));
+      const res = await api.translateRecipe(recipe.id, lang);
+      setTranslatedSteps(parseSteps(res.instructions));
     } catch {
       // silently fail — keep original text
     } finally {
       setTranslating(false);
     }
-  }, [lang, recipe.instructions]);
+  }, [lang, recipe.id]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }} edges={['top', 'bottom']}>

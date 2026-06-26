@@ -206,6 +206,10 @@ export class ApiClient {
     return this.json(`${this._base}/api/recipes/${id}`);
   }
 
+  async translateRecipe(id: string, lang: string): Promise<{ instructions: string; lang: string; cached: string }> {
+    return this.json(`${this._base}/api/recipes/${id}/translate?lang=${encodeURIComponent(lang)}`);
+  }
+
   async searchRecipes(params: {
     q?: string;
     area?: string;

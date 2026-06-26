@@ -70,6 +70,7 @@ func main() {
 
 	pantryH := pantry.NewHandler(pantry.NewStore(pool))
 	recipeH := recipe.NewHandler(recipe.NewService(provider))
+	translateH := recipe.NewTranslateHandler(pool, cfg.GoogleTranslateAPIKey)
 	nutritionH := nutrition.NewHandler(nutrition.NewStore(pool))
 	gamificationH := gamification.NewHandler(gamification.NewStore(pool))
 	authH := auth.NewHandler(auth.NewStore(pool), jwtSecret,
@@ -96,7 +97,7 @@ func main() {
 	r.Route("/api", func(r chi.Router) {
 		r.Use(middleware.UserContext(jwtSecret))
 		r.Mount("/pantry", pantryRouter(pantryH))
-		r.Mount("/recipes", recipeRouter(recipeH))
+		r.Mount("/recipes", recipeRouter(recipeH, translateH))
 		r.Mount("/nutrition", nutritionRouter(nutritionH))
 		r.Mount("/gamification", gamificationRouter(gamificationH))
 	})
@@ -110,9 +111,10 @@ func pantryRouter(h *pantry.Handler) chi.Router {
 	return r
 }
 
-func recipeRouter(h *recipe.Handler) chi.Router {
+func recipeRouter(h *recipe.Handler, th *recipe.TranslateHandler) chi.Router {
 	r := chi.NewRouter()
 	h.Routes(r)
+	th.Register(r)
 	return r
 }
 

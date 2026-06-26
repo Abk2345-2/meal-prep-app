@@ -57,6 +57,10 @@ type Config struct {
 	// Must be at least 32 bytes of random data in production.
 	JWTSecret string
 
+	// GoogleTranslateAPIKey is optional. When set, recipe translation uses the
+	// paid Cloud Translation API. When empty, the free gtx endpoint is used instead.
+	GoogleTranslateAPIKey string
+
 	// CORS allow-list for the browser frontend.
 	CORSAllowedOrigins string
 
@@ -96,7 +100,8 @@ func Load() Config {
 		FrontendURL:        env("FRONTEND_URL", "http://localhost:3000"),
 		JWTSecret:          env("JWT_SECRET", "dev-secret-change-in-production"),
 
-		CORSAllowedOrigins: env("CORS_ALLOWED_ORIGINS", "*"),
+		GoogleTranslateAPIKey: env("GOOGLE_TRANSLATE_API_KEY", ""),
+		CORSAllowedOrigins:    env("CORS_ALLOWED_ORIGINS", "*"),
 		SkipMigrations:     os.Getenv("SKIP_MIGRATIONS") == "true",
 	}
 }
