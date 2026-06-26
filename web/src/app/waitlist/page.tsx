@@ -80,7 +80,7 @@ export default function WaitlistPage() {
                 We'll email you the moment PantryPilot launches. Tell your friends — the more the merrier.
               </p>
               <a
-                href={`https://wa.me/?text=${encodeURIComponent('Join the waitlist for PantryPilot — an Indian kitchen app that turns your pantry into recipes 🍽️ https://meal-prep-app-web.vercel.app/waitlist')}`}
+                href={`https://wa.me/?text=${encodeURIComponent('Join the waitlist for PantryPilot — an Indian kitchen app that turns your pantry into recipes 🍽️ https://pantrypilot-web.vercel.app/waitlist')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-4 inline-flex items-center gap-2 rounded-xl bg-green-500 px-5 py-3 text-sm font-semibold text-white hover:bg-green-600 transition"
