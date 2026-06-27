@@ -6,16 +6,19 @@ import type { RecipeSuggestion } from '@nuskhaa/shared';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { parseInstructionSteps } from '@/lib/parseSteps';
+import { useLanguage } from '@/lib/useLanguage';
 
 export default function RecipeDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
+  const { lang } = useLanguage();
   const [recipe, setRecipe] = useState<RecipeSuggestion | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cooking, setCooking] = useState(false);
   const [cooked, setCooked] = useState(false);
+  const [translatedInstructions, setTranslatedInstructions] = useState<string | null>(null);
 
   // Favorite state
   const [favorited, setFavorited] = useState(false);
@@ -36,6 +39,14 @@ export default function RecipeDetail() {
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // Auto-translate instructions when language changes
+  useEffect(() => {
+    if (!recipe || lang === 'en') { setTranslatedInstructions(null); return; }
+    api.translateRecipe(id, lang)
+      .then((r) => setTranslatedInstructions(r.instructions))
+      .catch(() => setTranslatedInstructions(null));
+  }, [id, lang, recipe]);
 
   // Check if already favorited
   useEffect(() => {
@@ -137,7 +148,7 @@ export default function RecipeDetail() {
     );
   }
 
-  const steps = parseInstructionSteps(recipe.instructions);
+  const steps = parseInstructionSteps(translatedInstructions ?? recipe.instructions);
 
   const youtubeId = recipe.youtube_url
     ? (() => {

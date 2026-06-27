@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation';
 import type { GamificationSummary, TodayNutrition } from '@nuskhaa/shared';
 import { useAuth } from '@/lib/auth-context';
+import { PushBell } from '@/components/PushBell';
+import { useLanguage } from '@/lib/useLanguage';
 
 export function StatsHeader({
   nutrition,
@@ -15,6 +17,7 @@ export function StatsHeader({
 }) {
   const router = useRouter();
   const { user } = useAuth();
+  const { lang, setLang, languages } = useLanguage();
   const consumed = nutrition?.totals.calories ?? 0;
   const goal = nutrition?.goal.daily_calories ?? 2000;
   const pct = Math.min(100, Math.round((consumed / goal) * 100));
@@ -27,6 +30,19 @@ export function StatsHeader({
           <p className="text-sm text-white/80">Never let anything go to waste.</p>
         </button>
         <div className="flex items-center gap-2">
+          <select
+            value={lang}
+            onChange={(e) => setLang(e.target.value as Parameters<typeof setLang>[0])}
+            className="rounded-lg bg-white/20 px-2 py-1 text-xs text-white backdrop-blur focus:outline-none"
+            aria-label="Select language"
+          >
+            {languages.map((l) => (
+              <option key={l.code} value={l.code} className="text-slate-800 bg-white">
+                {l.label}
+              </option>
+            ))}
+          </select>
+          <PushBell />
           <button
             onClick={onShare}
             className="rounded-full bg-white/20 px-3 py-1 text-sm font-medium backdrop-blur"

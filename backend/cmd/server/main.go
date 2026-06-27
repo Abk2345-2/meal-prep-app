@@ -71,11 +71,23 @@ func main() {
 	jwtSecret := []byte(cfg.JWTSecret)
 
 	pantryH := pantry.NewHandler(pantry.NewStore(pool))
-	recipeH := recipe.NewHandler(recipe.NewService(provider))
+	recipeSvc := recipe.NewService(provider)
+	recipeH := recipe.NewHandler(recipeSvc)
 	translateH := recipe.NewTranslateHandler(pool, cfg.GoogleTranslateAPIKey)
 	nutritionH := nutrition.NewHandler(nutrition.NewStore(pool))
 	gamificationH := gamification.NewHandler(gamification.NewStore(pool))
-	socialH := social.NewHandler(social.NewStore(pool))
+	socialH := social.NewHandler(social.NewStore(pool), func(ctx context.Context, query string) ([]recipeprovider.Recipe, error) {
+		results, err := recipeSvc.Search(ctx, recipe.SearchParams{Query: query, Limit: 1})
+		if err != nil || len(results) == 0 {
+			return nil, err
+		}
+		// Return the top result as a slice of provider recipes.
+		out := make([]recipeprovider.Recipe, len(results))
+		for i, r := range results {
+			out[i] = r.Recipe
+		}
+		return out, nil
+	})
 	waitlistH := waitlist.NewHandler(pool)
 	authH := auth.NewHandler(auth.NewStore(pool), jwtSecret,
 		cfg.GoogleClientID, cfg.GoogleClientSecret, cfg.GoogleCallbackURL, cfg.FrontendURL)

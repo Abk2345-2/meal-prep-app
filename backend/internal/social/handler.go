@@ -1,6 +1,7 @@
 package social
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -8,11 +9,21 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pantrytoplate/backend/internal/httpx"
 	"github.com/pantrytoplate/backend/internal/middleware"
+	"github.com/pantrytoplate/backend/internal/recipeprovider"
 )
 
-type Handler struct{ store *Store }
+// RecipeFinder is the function signature the handler needs to look up recipes by title.
+// Injected from cmd/server to avoid a package import cycle.
+type RecipeFinder func(ctx context.Context, query string) ([]recipeprovider.Recipe, error)
 
-func NewHandler(store *Store) *Handler { return &Handler{store: store} }
+type Handler struct {
+	store       *Store
+	findRecipes RecipeFinder
+}
+
+func NewHandler(store *Store, findRecipes RecipeFinder) *Handler {
+	return &Handler{store: store, findRecipes: findRecipes}
+}
 
 func (h *Handler) Routes(r chi.Router) {
 	r.Post("/favorites", h.addFavorite)
@@ -161,8 +172,8 @@ func (h *Handler) importReel(w http.ResponseWriter, r *http.Request) {
 	if !httpx.Decode(w, r, &req) {
 		return
 	}
-	if req.URL == "" {
-		httpx.Error(w, http.StatusBadRequest, "url is required")
+	if req.URL == "" && req.Title == "" {
+		httpx.Error(w, http.StatusBadRequest, "url or title is required")
 		return
 	}
 
@@ -172,15 +183,34 @@ func (h *Handler) importReel(w http.ResponseWriter, r *http.Request) {
 		rawTitle = extractTitleFromURL(req.URL)
 	}
 
+	// Search the recipe DB by the extracted title to populate ingredients + instructions.
+	title := rawTitle
+	image := ""
+	instructions := ""
+	ingredientsJSON := json.RawMessage("[]")
+
+	if h.findRecipes != nil && rawTitle != "" {
+		if matches, err := h.findRecipes(r.Context(), rawTitle); err == nil && len(matches) > 0 {
+			best := matches[0]
+			title = best.Title
+			image = best.Image
+			instructions = best.Instructions
+			// Marshal ingredients into JSON.
+			if data, err := json.Marshal(best.Ingredients); err == nil {
+				ingredientsJSON = json.RawMessage(data)
+			}
+		}
+	}
+
 	reel := SavedReel{
 		UserID:       userID,
 		SourceURL:    req.URL,
 		Platform:     platform,
 		RawTitle:     rawTitle,
-		Title:        rawTitle,
-		Image:        "",
-		Ingredients:  json.RawMessage("[]"),
-		Instructions: "",
+		Title:        title,
+		Image:        image,
+		Ingredients:  ingredientsJSON,
+		Instructions: instructions,
 	}
 
 	saved, err := h.store.SaveReel(r.Context(), userID, reel)
