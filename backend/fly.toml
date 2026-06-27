@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for backend-pantry-pilot on 2026-06-24T17:23:14+09:00
+# fly.toml app configuration file generated for backend-nuskhaa on 2026-06-28T02:06:37+09:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'backend-pantry-pilot'
+app = 'backend-nuskhaa'
 primary_region = 'nrt'
 
 [build]
@@ -11,9 +11,9 @@ primary_region = 'nrt'
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = 'suspend'
+  auto_stop_machines = 'stop'
   auto_start_machines = true
-  min_machines_running = 1
+  min_machines_running = 0
   processes = ['app']
 
 [[vm]]
