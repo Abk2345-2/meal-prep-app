@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import type { RecipeSuggestion } from '@pantrytoplate/shared';
+import type { RecipeSuggestion } from '@nuskhaa/shared';
 import { api } from '../../lib/api';
 import { useLang, LANGUAGES } from '../../lib/LanguageContext';
 

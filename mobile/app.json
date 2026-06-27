@@ -1,25 +1,25 @@
 {
   "expo": {
-    "name": "PantryToPlate",
-    "slug": "pantrytoplate",
-    "scheme": "pantrytoplate",
+    "name": "Nuskhaa",
+    "slug": "nuskhaa",
+    "scheme": "nuskhaa",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.pantrytoplate.app"
+      "bundleIdentifier": "com.nuskhaa.app"
     },
     "android": {
-      "package": "com.pantrytoplate.app",
+      "package": "com.nuskhaa.app",
       "intentFilters": [
         {
           "action": "VIEW",
           "autoVerify": true,
           "data": [
             {
-              "scheme": "pantrytoplate"
+              "scheme": "nuskhaa"
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]
@@ -37,14 +37,14 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Allow PantryToPlate to use your microphone for voice grocery input."
+          "microphonePermission": "Allow Nuskhaa to use your microphone for voice grocery input."
         }
       ],
       "expo-web-browser",
       "expo-file-system"
     ],
     "extra": {
-      "apiBaseUrl": "https://backend-pantry-pilot.fly.dev"
+      "apiBaseUrl": "https://backend-nuskhaa.fly.dev"
     }
   }
 }

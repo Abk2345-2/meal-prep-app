@@ -2,15 +2,18 @@
 
 import { useCallback, useRef, useState } from 'react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://backend-pantry-pilot.fly.dev';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://backend-nuskhaa.fly.dev';
 
 type State = 'idle' | 'loading' | 'success' | 'error' | 'duplicate';
 
 const FEATURES = [
   { emoji: '🥦', text: "Tell it what's in your kitchen — it finds the recipe" },
+  { emoji: '🎬', text: 'Save recipes from Instagram Reels, YouTube Shorts &amp; TikTok' },
+  { emoji: '❤️', text: 'Favorite recipes and add ingredients straight to your shopping list' },
+  { emoji: '🔗', text: 'Share recipes with friends and family in one tap' },
+  { emoji: '🔔', text: 'Get expiry alerts before food goes to waste' },
   { emoji: '🎙️', text: 'Add groceries by voice in Hindi, Tamil, Bengali + 19 more languages' },
   { emoji: '📊', text: 'Track calories and hit your nutrition goals daily' },
-  { emoji: '♻️', text: 'Never waste food again — alerts before things expire' },
   { emoji: '🔥', text: 'Build streaks and unlock rewards for healthy habits' },
 ];
 
@@ -49,13 +52,10 @@ export default function WaitlistPage() {
       <div className="mx-auto max-w-lg px-6 pt-16 pb-10 text-center">
         <div className="mb-4 text-6xl">🍽️</div>
         <h1 className="text-4xl font-extrabold text-slate-900 leading-tight">
-          PantryPilot
+          Nuskhaa
         </h1>
         <p className="mt-3 text-lg text-slate-600">
-          Cook smarter. Waste less. In your language.
-        </p>
-        <p className="mt-2 text-sm text-slate-400">
-          The Indian kitchen app that turns what you already have into dinner.
+          Never let anything go to waste.
         </p>
       </div>
 
@@ -77,10 +77,10 @@ export default function WaitlistPage() {
               <div className="text-5xl">🎉</div>
               <h2 className="text-xl font-bold text-slate-900">You're on the list!</h2>
               <p className="text-sm text-slate-500">
-                We'll email you the moment PantryPilot launches. Tell your friends — the more the merrier.
+                We'll email you the moment Nuskhaa launches. Tell your friends — the more the merrier.
               </p>
               <a
-                href={`https://wa.me/?text=${encodeURIComponent('Join the waitlist for PantryPilot — an Indian kitchen app that turns your pantry into recipes 🍽️ https://pantrypilot-web.vercel.app/waitlist')}`}
+                href={`https://wa.me/?text=${encodeURIComponent('Join the waitlist for Nuskhaa — never let anything go to waste 🍽️ https://nuskhaa.app/waitlist')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-4 inline-flex items-center gap-2 rounded-xl bg-green-500 px-5 py-3 text-sm font-semibold text-white hover:bg-green-600 transition"

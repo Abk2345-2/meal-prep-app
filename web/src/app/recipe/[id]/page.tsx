@@ -2,18 +2,32 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import type { RecipeSuggestion } from '@pantrytoplate/shared';
+import type { RecipeSuggestion } from '@nuskhaa/shared';
 import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import { parseInstructionSteps } from '@/lib/parseSteps';
 
 export default function RecipeDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
   const [recipe, setRecipe] = useState<RecipeSuggestion | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cooking, setCooking] = useState(false);
   const [cooked, setCooked] = useState(false);
+
+  // Favorite state
+  const [favorited, setFavorited] = useState(false);
+  const [favLoading, setFavLoading] = useState(false);
+
+  // Share state
+  const [sharing, setSharing] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+
+  // Shopping list state
+  const [addingToList, setAddingToList] = useState(false);
+  const [addedToList, setAddedToList] = useState(false);
 
   useEffect(() => {
     api
@@ -22,6 +36,18 @@ export default function RecipeDetail() {
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // Check if already favorited
+  useEffect(() => {
+    if (!user || !id) return;
+    api
+      .listFavorites()
+      .then((d) => {
+        const isFav = d.favorites.some((f) => f.recipe_id === id);
+        setFavorited(isFav);
+      })
+      .catch(() => {});
+  }, [user, id]);
 
   async function logCooked() {
     if (!recipe || cooked) return;
@@ -38,6 +64,57 @@ export default function RecipeDetail() {
       setCooked(true);
     } finally {
       setCooking(false);
+    }
+  }
+
+  async function toggleFavorite() {
+    if (!recipe || favLoading) return;
+    setFavLoading(true);
+    try {
+      if (favorited) {
+        await api.removeFavorite(recipe.id);
+        setFavorited(false);
+      } else {
+        await api.addFavorite(recipe.id, recipe);
+        setFavorited(true);
+      }
+    } finally {
+      setFavLoading(false);
+    }
+  }
+
+  async function handleShare() {
+    if (!recipe || sharing) return;
+    setSharing(true);
+    try {
+      const shared = await api.createShare(recipe.id, recipe);
+      const shareUrl = `${window.location.origin}/shared/${shared.token}`;
+      if (navigator.share) {
+        await navigator.share({ title: recipe.title, url: shareUrl });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2500);
+      }
+    } finally {
+      setSharing(false);
+    }
+  }
+
+  async function addToShoppingList() {
+    if (!recipe || addingToList) return;
+    setAddingToList(true);
+    try {
+      await api.addShoppingItems(
+        recipe.ingredients.map((i) => ({
+          ingredient_name: i.name,
+          quantity: i.measure || '',
+          from_recipe_id: recipe.id,
+        }))
+      );
+      setAddedToList(true);
+    } finally {
+      setAddingToList(false);
     }
   }
 
@@ -118,26 +195,72 @@ export default function RecipeDetail() {
           ))}
         </div>
 
-        {/* Log cooked button */}
-        <button
-          onClick={logCooked}
-          disabled={cooking || cooked}
-          className={`w-full rounded-xl py-3 text-base font-semibold transition ${
-            cooked
-              ? 'bg-green-100 text-green-700'
-              : 'bg-brand text-white hover:bg-brand-dark disabled:opacity-60'
-          }`}
-        >
-          {cooked
-            ? `✓ Logged — +${recipe.calories} cal added to today`
-            : cooking
-            ? 'Logging…'
-            : `🍳 I cooked this  ·  +${recipe.calories} cal`}
-        </button>
+        {/* Log cooked + Favorite + Share */}
+        <div className="flex gap-2">
+          <button
+            onClick={logCooked}
+            disabled={cooking || cooked}
+            className={`flex-1 rounded-xl py-3 text-base font-semibold transition ${
+              cooked
+                ? 'bg-green-100 text-green-700'
+                : 'bg-brand text-white hover:bg-brand-dark disabled:opacity-60'
+            }`}
+          >
+            {cooked
+              ? `✓ Logged`
+              : cooking
+              ? 'Logging…'
+              : `🍳 Cooked  ·  +${recipe.calories} cal`}
+          </button>
+
+          {/* Favorite */}
+          {user && (
+            <button
+              onClick={toggleFavorite}
+              disabled={favLoading}
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-xl shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
+              aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
+            >
+              {favorited ? '❤️' : '🤍'}
+            </button>
+          )}
+
+          {/* Share */}
+          {user && (
+            <button
+              onClick={handleShare}
+              disabled={sharing}
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-xl shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
+              aria-label="Share recipe"
+              title={shareCopied ? 'Link copied!' : 'Share recipe'}
+            >
+              {shareCopied ? '✓' : '🔗'}
+            </button>
+          )}
+        </div>
 
         {/* Ingredients */}
         <section>
-          <h2 className="mb-2 text-lg font-semibold">🛒 Ingredients</h2>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">🛒 Ingredients</h2>
+            {user && (
+              <button
+                onClick={addToShoppingList}
+                disabled={addingToList || addedToList}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  addedToList
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-brand text-white hover:bg-brand-dark disabled:opacity-60'
+                }`}
+              >
+                {addedToList
+                  ? 'Added to shopping list ✓'
+                  : addingToList
+                  ? 'Adding…'
+                  : '+ Shopping List'}
+              </button>
+            )}
+          </div>
           <ul className="space-y-1">
             {recipe.ingredients.map((ing, i) => (
               <li

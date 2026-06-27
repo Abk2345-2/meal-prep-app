@@ -37,7 +37,7 @@ const AuthContext = createContext<AuthContextValue>({
   setSession: () => {},
 });
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://backend-pantry-pilot.fly.dev';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://backend-nuskhaa.fly.dev';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Always start with null/true — identical on server and first client render.

@@ -12,8 +12,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { parseText } from '@pantrytoplate/shared';
-import type { RecipeSuggestion } from '@pantrytoplate/shared';
+import { parseText } from '@nuskhaa/shared';
+import type { RecipeSuggestion } from '@nuskhaa/shared';
 import { useSharedAppData as useAppData } from '../../lib/AppDataContext';
 import { useAuth } from '../../lib/auth-context';
 import { api } from '../../lib/api';
@@ -247,8 +247,8 @@ export default function CookScreen() {
           {/* Top row: title + share + avatar */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Pressable onPress={() => router.push('/profile')}>
-              <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>PantryPilot</Text>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)' }}>Cook Smarter, Waste Less.</Text>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>Nuskhaa</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)' }}>Never let anything go to waste.</Text>
             </Pressable>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Pressable

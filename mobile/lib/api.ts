@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { ApiClient } from '@pantrytoplate/shared';
+import { ApiClient } from '@nuskhaa/shared';
 
 // Base URL precedence: EXPO_PUBLIC_API_BASE_URL env → app.json extra → localhost.
 // NOTE: on a physical iOS device, "localhost" points at the phone — set

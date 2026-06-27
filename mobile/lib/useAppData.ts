@@ -4,7 +4,7 @@ import type {
   PantryItem,
   RecipeSuggestion,
   TodayNutrition,
-} from '@pantrytoplate/shared';
+} from '@nuskhaa/shared';
 import { api } from './api';
 import { useAuth } from './auth-context';
 

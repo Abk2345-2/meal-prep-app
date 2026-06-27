@@ -111,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async () => {
     // Linking.createURL gives exp://host:port/--/auth/callback in Expo Go
-    // and pantrytoplate://auth/callback in a standalone build.
+    // and nuskhaa://auth/callback in a standalone build.
     const deepLink = Linking.createURL('auth/callback');
     const loginUrl = `${API_BASE}/api/auth/login?redirect_to=${encodeURIComponent(deepLink)}`;
 

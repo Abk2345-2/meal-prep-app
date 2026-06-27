@@ -24,9 +24,9 @@ export default function LoginScreen() {
         {/* Logo */}
         <View style={{ alignItems: 'center', gap: 12 }}>
           <Text style={{ fontSize: 64 }}>🍽️</Text>
-          <Text style={{ fontSize: 28, fontWeight: '800', color: '#0f172a' }}>PantryToPlate</Text>
+          <Text style={{ fontSize: 28, fontWeight: '800', color: '#0f172a' }}>Nuskhaa</Text>
           <Text style={{ fontSize: 16, color: '#64748b', textAlign: 'center' }}>
-            Turn your groceries into great meals
+            Never let anything go to waste.
           </Text>
         </View>
 

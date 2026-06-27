@@ -26,6 +26,7 @@ func NewHandler(store *Store) *Handler {
 func (h *Handler) Routes(r chi.Router) {
 	r.Post("/parse", h.parse)
 	r.Get("/items", h.list)
+	r.Get("/items/expiring", h.listExpiring)
 	r.Post("/items", h.create)
 	r.Patch("/items/{id}", h.update)
 	r.Delete("/items/{id}", h.delete)
@@ -80,6 +81,16 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		saved = append(saved, it)
 	}
 	httpx.JSON(w, http.StatusCreated, map[string]any{"items": saved})
+}
+
+func (h *Handler) listExpiring(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.UserID(r.Context())
+	items, err := h.store.List(r.Context(), userID, 3)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"items": items, "count": len(items)})
 }
 
 // list returns the user's items, optionally filtered to expiring-soon.

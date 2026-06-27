@@ -11,8 +11,8 @@ export default function LoginPage() {
         {/* Features section - left on md+ */}
         <div className="flex-1 space-y-6 text-center md:text-left">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">PantryPilot</h1>
-            <p className="mt-2 text-base text-gray-500">Cook smarter, waste less.</p>
+            <h1 className="text-3xl font-bold text-gray-900">Nuskhaa</h1>
+            <p className="mt-2 text-base text-gray-500">Never let anything go to waste.</p>
           </div>
           <ul className="space-y-4">
             <li className="flex items-center gap-3 md:justify-start justify-center">
@@ -22,6 +22,22 @@ export default function LoginPage() {
             <li className="flex items-center gap-3 md:justify-start justify-center">
               <span className="text-2xl">🍳</span>
               <span className="text-base text-gray-700">Get recipes matched to what you have</span>
+            </li>
+            <li className="flex items-center gap-3 md:justify-start justify-center">
+              <span className="text-2xl">🎬</span>
+              <span className="text-base text-gray-700">Save recipes from Instagram, YouTube &amp; TikTok</span>
+            </li>
+            <li className="flex items-center gap-3 md:justify-start justify-center">
+              <span className="text-2xl">❤️</span>
+              <span className="text-base text-gray-700">Favorite recipes &amp; build your shopping list</span>
+            </li>
+            <li className="flex items-center gap-3 md:justify-start justify-center">
+              <span className="text-2xl">🔗</span>
+              <span className="text-base text-gray-700">Share recipes with friends and family</span>
+            </li>
+            <li className="flex items-center gap-3 md:justify-start justify-center">
+              <span className="text-2xl">🔔</span>
+              <span className="text-base text-gray-700">Get alerts before your food expires</span>
             </li>
             <li className="flex items-center gap-3 md:justify-start justify-center">
               <span className="text-2xl">📊</span>

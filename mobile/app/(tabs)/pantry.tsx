@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { PantryItem } from '@pantrytoplate/shared';
+import type { PantryItem } from '@nuskhaa/shared';
 import { useSharedAppData as useAppData } from '../../lib/AppDataContext';
 import { api } from '../../lib/api';
 import { PantryScreenSkeleton } from '../../components/LoadingScreen';

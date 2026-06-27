@@ -3,8 +3,8 @@ import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
 
 export const metadata: Metadata = {
-  title: 'PantryPilot',
-  description: 'Cook Smarter, Waste Less.',
+  title: 'Nuskhaa',
+  description: 'Never let anything go to waste.',
 };
 
 export const viewport: Viewport = {
@@ -34,8 +34,15 @@ function Footer() {
       <div className="mx-auto max-w-md px-4 py-6">
         {/* Brand */}
         <div className="mb-4 flex items-center gap-2">
-          <span className="text-lg font-bold text-brand">PantryPilot</span>
-          <span className="text-xs text-slate-400">Cook Smarter, Waste Less.</span>
+          <span className="text-lg font-bold text-brand">Nuskhaa</span>
+          <span className="text-xs text-slate-400">Never let anything go to waste.</span>
+        </div>
+
+        {/* Nav links */}
+        <div className="mb-3 flex flex-wrap gap-x-5 gap-y-1 text-sm font-medium text-slate-600">
+          <a href="/favorites" className="hover:text-brand transition-colors">Favorites</a>
+          <a href="/shopping" className="hover:text-brand transition-colors">Shopping List</a>
+          <a href="/reels" className="hover:text-brand transition-colors">Saved Reels</a>
         </div>
 
         {/* Links */}
@@ -43,15 +50,12 @@ function Footer() {
           <a href="/about" className="hover:text-brand transition-colors">About</a>
           <a href="/privacy" className="hover:text-brand transition-colors">Privacy Policy</a>
           <a href="/terms" className="hover:text-brand transition-colors">Terms of Use</a>
-          <a href="mailto:hello@pantrypilot.app" className="hover:text-brand transition-colors">Contact</a>
+          <a href="mailto:hello@nuskhaa.app" className="hover:text-brand transition-colors">Contact</a>
         </div>
 
         {/* Divider + copyright */}
         <p className="text-xs text-slate-400">
-          © {year} PantryPilot. All rights reserved.
-        </p>
-        <p className="mt-1 text-xs text-slate-300">
-          Made with ❤️ to reduce food waste.
+          © {year} Nuskhaa. All rights reserved.
         </p>
       </div>
     </footer>

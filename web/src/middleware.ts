@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 // Flip to true when you're ready to open the app to everyone.
 const APP_LAUNCHED = false;
 
-// Share this URL with testers: https://pantrypilot-web.vercel.app?preview=pp-dev-2026
+// Share this URL with testers: https://nuskhaa.app?preview=nuskhaa-dev-2026
 // Visiting it once sets a cookie that bypasses the waitlist gate forever.
 const PREVIEW_TOKEN = 'pp-dev-2026';
 const PREVIEW_COOKIE = 'pp_preview';

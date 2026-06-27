@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import type { RecipeSuggestion } from '@pantrytoplate/shared';
+import type { RecipeSuggestion } from '@nuskhaa/shared';
 import { api } from '@/lib/api';
 
 const TIME_OPTIONS = [

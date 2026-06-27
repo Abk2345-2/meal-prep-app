@@ -4,7 +4,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '../../lib/auth-context';
 
-// Handles pantrytoplate://auth/callback?token=... in standalone builds.
+// Handles nuskhaa://auth/callback?token=... in standalone builds.
 // In Expo Go on Android the auth-context Linking listener handles it instead.
 WebBrowser.maybeCompleteAuthSession();
 

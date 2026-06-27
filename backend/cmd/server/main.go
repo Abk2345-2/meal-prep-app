@@ -20,6 +20,7 @@ import (
 	"github.com/pantrytoplate/backend/internal/pantry"
 	"github.com/pantrytoplate/backend/internal/recipe"
 	"github.com/pantrytoplate/backend/internal/recipeprovider"
+	"github.com/pantrytoplate/backend/internal/social"
 	"github.com/pantrytoplate/backend/internal/waitlist"
 )
 
@@ -74,6 +75,7 @@ func main() {
 	translateH := recipe.NewTranslateHandler(pool, cfg.GoogleTranslateAPIKey)
 	nutritionH := nutrition.NewHandler(nutrition.NewStore(pool))
 	gamificationH := gamification.NewHandler(gamification.NewStore(pool))
+	socialH := social.NewHandler(social.NewStore(pool))
 	waitlistH := waitlist.NewHandler(pool)
 	authH := auth.NewHandler(auth.NewStore(pool), jwtSecret,
 		cfg.GoogleClientID, cfg.GoogleClientSecret, cfg.GoogleCallbackURL, cfg.FrontendURL)
@@ -98,6 +100,9 @@ func main() {
 		authH.Routes(r)
 	})
 
+	// Public share link — no auth required.
+	r.Get("/api/social/share/{token}", socialH.GetSharePublic)
+
 	// All other /api/* routes resolve the caller's identity from a JWT or header.
 	r.Route("/api", func(r chi.Router) {
 		r.Use(middleware.UserContext(jwtSecret))
@@ -105,9 +110,16 @@ func main() {
 		r.Mount("/recipes", recipeRouter(recipeH, translateH))
 		r.Mount("/nutrition", nutritionRouter(nutritionH))
 		r.Mount("/gamification", gamificationRouter(gamificationH))
+		r.Mount("/social", socialRouter(socialH))
 	})
 
 	httpx.Serve(cfg.ServerAddr, r)
+}
+
+func socialRouter(h *social.Handler) chi.Router {
+	r := chi.NewRouter()
+	h.Routes(r)
+	return r
 }
 
 func pantryRouter(h *pantry.Handler) chi.Router {

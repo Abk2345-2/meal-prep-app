@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { parseText, type ParsedItem } from '@pantrytoplate/shared';
+import { parseText, type ParsedItem } from '@nuskhaa/shared';
 import { api } from '@/lib/api';
 import { useGroqSpeech } from '@/lib/useGroqSpeech';
 import { formatGroceryTranscript } from '@/lib/groceryTranscript';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://backend-pantry-pilot.fly.dev';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://backend-nuskhaa.fly.dev';
 
 // AddGroceries is the single low-click entry point: type OR speak a sentence
 // like "2 lbs chicken, dozen eggs", see parsed chips instantly, tap once to save.

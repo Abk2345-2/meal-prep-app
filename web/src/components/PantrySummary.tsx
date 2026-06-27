@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { PantryItem } from '@pantrytoplate/shared';
+import type { PantryItem } from '@nuskhaa/shared';
 
 const TABS = [
   { key: 'all',      label: 'All' },

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import type { GamificationSummary, TodayNutrition } from '@pantrytoplate/shared';
+import type { GamificationSummary, TodayNutrition } from '@nuskhaa/shared';
 import { useAuth } from '@/lib/auth-context';
 
 export function StatsHeader({
@@ -23,8 +23,8 @@ export function StatsHeader({
     <header className="rounded-2xl bg-gradient-to-br from-brand to-brand-dark p-5 text-white shadow-sm">
       <div className="flex items-center justify-between">
         <button onClick={() => router.push('/profile')} className="text-left">
-          <h1 className="text-xl font-bold">PantryPilot</h1>
-          <p className="text-sm text-white/80">Cook Smarter, Waste Less.</p>
+          <h1 className="text-xl font-bold">Nuskhaa</h1>
+          <p className="text-sm text-white/80">Never let anything go to waste.</p>
         </button>
         <div className="flex items-center gap-2">
           <button

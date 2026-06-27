@@ -1,15 +1,15 @@
 {
-  "name": "pantrytoplate",
+  "name": "nuskhaa",
   "private": true,
   "version": "0.1.0",
-  "description": "PantryToPlate — turn what you have into meals. Monorepo root.",
+  "description": "Nuskhaa — never let anything go to waste. Monorepo root.",
   "workspaces": [
     "packages/*",
     "web"
   ],
   "scripts": {
     "dev:web": "npm run dev --workspace web",
-    "build:shared": "npm run build --workspace @pantrytoplate/shared"
+    "build:shared": "npm run build --workspace @nuskhaa/shared"
   },
   "dependencies": {
     "vercel": "^54.15.1"

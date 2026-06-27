@@ -1,4 +1,4 @@
-// Shared types + API client for PantryToPlate
+// Shared types + API client for Nuskhaa
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -91,6 +91,46 @@ export interface GamificationSummary {
   streak: Streak;
   total_points: number;
   next_reward: Reward | null;
+}
+
+export interface Favorite {
+  id: string;
+  user_id: string;
+  recipe_id: string;
+  recipe_data: RecipeSuggestion;
+  created_at: string;
+}
+
+export interface ShoppingItem {
+  id: string;
+  user_id: string;
+  ingredient_name: string;
+  quantity: string;
+  checked: boolean;
+  from_recipe_id?: string | null;
+  created_at: string;
+}
+
+export interface SharedRecipe {
+  id: string;
+  user_id: string;
+  recipe_id: string;
+  recipe_data: RecipeSuggestion;
+  token: string;
+  created_at: string;
+}
+
+export interface SavedReel {
+  id: string;
+  user_id: string;
+  source_url: string;
+  platform: 'instagram' | 'youtube' | 'tiktok' | 'unknown';
+  raw_title: string;
+  title: string;
+  image: string;
+  ingredients: Array<{ name: string; measure: string }>;
+  instructions: string;
+  created_at: string;
 }
 
 // ── Text parser ─────────────────────────────────────────────────────────────
@@ -297,5 +337,77 @@ export class ApiClient {
     history: Array<{ date: string; calories: number; meals: Array<{ id: string; source: string; calories: number; protein_g: number; carbs_g: number; fat_g: number; cooked_at: string }> }>;
   }> {
     return this.json(`${this._base}/api/nutrition/history?days=${days}`);
+  }
+
+  // Favorites
+  async addFavorite(recipeId: string, recipeData: RecipeSuggestion): Promise<Favorite> {
+    return this.json(`${this._base}/api/social/favorites`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipe_id: recipeId, recipe_data: recipeData }),
+    });
+  }
+
+  async removeFavorite(recipeId: string): Promise<void> {
+    await this.json(`${this._base}/api/social/favorites/${recipeId}`, { method: 'DELETE' });
+  }
+
+  async listFavorites(): Promise<{ favorites: Favorite[] }> {
+    return this.json(`${this._base}/api/social/favorites`);
+  }
+
+  // Shopping list
+  async listShoppingItems(): Promise<{ items: ShoppingItem[] }> {
+    return this.json(`${this._base}/api/social/shopping`);
+  }
+
+  async addShoppingItems(items: Array<{ ingredient_name: string; quantity: string; from_recipe_id?: string }>): Promise<{ items: ShoppingItem[] }> {
+    return this.json(`${this._base}/api/social/shopping`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items }),
+    });
+  }
+
+  async toggleShoppingItem(id: string): Promise<void> {
+    await this.json(`${this._base}/api/social/shopping/${id}/toggle`, { method: 'PATCH' });
+  }
+
+  async deleteShoppingItem(id: string): Promise<void> {
+    await this.json(`${this._base}/api/social/shopping/${id}`, { method: 'DELETE' });
+  }
+
+  async clearCheckedItems(): Promise<void> {
+    await this.json(`${this._base}/api/social/shopping/checked`, { method: 'DELETE' });
+  }
+
+  // Reels
+  async importReel(payload: { url?: string; title?: string }): Promise<SavedReel> {
+    return this.json(`${this._base}/api/social/reels/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async listReels(): Promise<{ reels: SavedReel[] }> {
+    return this.json(`${this._base}/api/social/reels`);
+  }
+
+  async deleteReel(id: string): Promise<void> {
+    await this.json(`${this._base}/api/social/reels/${id}`, { method: 'DELETE' });
+  }
+
+  // Shares
+  async createShare(recipeId: string, recipeData: RecipeSuggestion): Promise<SharedRecipe> {
+    return this.json(`${this._base}/api/social/share`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipe_id: recipeId, recipe_data: recipeData }),
+    });
+  }
+
+  async getShare(token: string): Promise<SharedRecipe> {
+    return this.json(`${this._base}/api/social/share/${token}`);
   }
 }
